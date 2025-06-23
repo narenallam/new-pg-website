@@ -11,4 +11,5 @@ export default [
   route("hashset", "routes/hashset.tsx"),
   route("hashtable", "routes/hashtable.tsx"),
   route("heapq", "routes/heapq.tsx"),
+  route("java", "routes/java.tsx"),
 ] satisfies RouteConfig;
