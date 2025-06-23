@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+html,
+body {
+  @apply bg-white dark:bg-gray-950;
+
+  @media (prefers-color-scheme: dark) {
+    color-scheme: dark;
+  }
+}
+
+/* Animated Gradient Background */
+@keyframes gradient-animation {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.bg-gradient-animated {
+  background: linear-gradient(
+    -45deg,
+    #ff006e,
+    #8338ec,
+    #06ffa5
+  );
+  background-size: 300% 300%;
+  animation: gradient-animation 12s ease infinite;
+}
+
+@media (prefers-color-scheme: dark) {
+  .bg-gradient-animated {
+    background: linear-gradient(
+      -45deg,
+      #d946ef,
+      #3b82f6,
+      #10b981
+    );
+    background-size: 300% 300%;
+    animation: gradient-animation 15s ease infinite;
+  }
+}
