@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Moirai+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Moirai+One:wght@400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:wght@100..900&family=Fira+Code:wght@300..700&family=Source+Code+Pro:wght@200..900&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -52,7 +53,70 @@ body {
   }
 }
 
-/* Dynamic Themed Scrollbars */
+/* Debug CSS for Monaco Editor */
+.breakpoint-enabled {
+  background: rgba(239, 68, 68, 0.25) !important;
+}
+
+.breakpoint-disabled {
+  background: rgba(107, 114, 128, 0.15) !important;
+}
+
+.breakpoint-glyph-enabled::before {
+  content: "●";
+  color: rgb(239, 68, 68);
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1;
+  position: absolute;
+  left: 60%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  text-shadow: 0 0 3px rgba(239, 68, 68, 0.8);
+}
+
+.breakpoint-glyph-disabled::before {
+  content: "○";
+  color: rgb(107, 114, 128);
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1;
+  position: absolute;
+  left: 60%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.debug-current-line {
+  background: rgba(234, 179, 8, 0.3) !important;
+  animation: debugLineGlow 2s ease-in-out infinite alternate;
+}
+
+.debug-current-line-glyph::before {
+  content: "▶";
+  color: rgb(234, 179, 8);
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1;
+  position: absolute;
+  left: 60%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  text-shadow: 0 0 3px rgba(234, 179, 8, 0.8);
+  animation: debugArrowPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes debugLineGlow {
+  0% { background: rgba(234, 179, 8, 0.3) !important; }
+  100% { background: rgba(234, 179, 8, 0.4) !important; }
+}
+
+@keyframes debugArrowPulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.1); }
+}
+
+/* Language-specific scrollbars */
 .custom-scrollbar-python::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -64,14 +128,14 @@ body {
 }
 
 .custom-scrollbar-python::-webkit-scrollbar-thumb {
-  background: rgba(250, 204, 21, 0.6);
+  background: rgba(250, 204, 21, 0.7);
   border-radius: 4px;
   border: 1px solid rgba(250, 204, 21, 0.3);
 }
 
 .custom-scrollbar-python::-webkit-scrollbar-thumb:hover {
-  background: rgba(250, 204, 21, 0.8);
-  box-shadow: 0 0 4px rgba(250, 204, 21, 0.4);
+  background: rgba(250, 204, 21, 0.9);
+  box-shadow: 0 0 4px rgba(250, 204, 21, 0.5);
 }
 
 .custom-scrollbar-cpp::-webkit-scrollbar {
@@ -85,14 +149,14 @@ body {
 }
 
 .custom-scrollbar-cpp::-webkit-scrollbar-thumb {
-  background: rgba(59, 130, 246, 0.6);
+  background: rgba(59, 130, 246, 0.7);
   border-radius: 4px;
   border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .custom-scrollbar-cpp::-webkit-scrollbar-thumb:hover {
-  background: rgba(59, 130, 246, 0.8);
-  box-shadow: 0 0 4px rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.9);
+  box-shadow: 0 0 4px rgba(59, 130, 246, 0.5);
 }
 
 .custom-scrollbar-java::-webkit-scrollbar {
@@ -106,14 +170,14 @@ body {
 }
 
 .custom-scrollbar-java::-webkit-scrollbar-thumb {
-  background: rgba(251, 146, 60, 0.6);
+  background: rgba(251, 146, 60, 0.7);
   border-radius: 4px;
   border: 1px solid rgba(251, 146, 60, 0.3);
 }
 
 .custom-scrollbar-java::-webkit-scrollbar-thumb:hover {
-  background: rgba(251, 146, 60, 0.8);
-  box-shadow: 0 0 4px rgba(251, 146, 60, 0.4);
+  background: rgba(251, 146, 60, 0.9);
+  box-shadow: 0 0 4px rgba(251, 146, 60, 0.5);
 }
 
 .custom-scrollbar-go::-webkit-scrollbar {
@@ -127,14 +191,14 @@ body {
 }
 
 .custom-scrollbar-go::-webkit-scrollbar-thumb {
-  background: rgba(34, 211, 238, 0.6);
+  background: rgba(34, 211, 238, 0.7);
   border-radius: 4px;
   border: 1px solid rgba(34, 211, 238, 0.3);
 }
 
 .custom-scrollbar-go::-webkit-scrollbar-thumb:hover {
-  background: rgba(34, 211, 238, 0.8);
-  box-shadow: 0 0 4px rgba(34, 211, 238, 0.4);
+  background: rgba(34, 211, 238, 0.9);
+  box-shadow: 0 0 4px rgba(34, 211, 238, 0.5);
 }
 
 .custom-scrollbar-javascript::-webkit-scrollbar {
@@ -148,14 +212,14 @@ body {
 }
 
 .custom-scrollbar-javascript::-webkit-scrollbar-thumb {
-  background: rgba(52, 211, 153, 0.6);
+  background: rgba(52, 211, 153, 0.7);
   border-radius: 4px;
   border: 1px solid rgba(52, 211, 153, 0.3);
 }
 
 .custom-scrollbar-javascript::-webkit-scrollbar-thumb:hover {
-  background: rgba(52, 211, 153, 0.8);
-  box-shadow: 0 0 4px rgba(52, 211, 153, 0.4);
+  background: rgba(52, 211, 153, 0.9);
+  box-shadow: 0 0 4px rgba(52, 211, 153, 0.5);
 }
 
 /* Gray scrollbar for algorithm cards section */
@@ -178,4 +242,26 @@ body {
 .custom-scrollbar-purple::-webkit-scrollbar-thumb:hover {
   background: rgba(107, 114, 128, 0.9);
   box-shadow: 0 0 4px rgba(107, 114, 128, 0.5);
+}
+
+/* Debug panel scrollbars */
+.debug-panel-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.debug-panel-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+}
+
+.debug-panel-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(168, 85, 247, 0.6);
+  border-radius: 2px;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.debug-panel-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 85, 247, 0.8);
+  box-shadow: 0 0 3px rgba(168, 85, 247, 0.4);
 }

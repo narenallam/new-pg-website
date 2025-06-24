@@ -1,5 +1,52 @@
 import { Link } from "react-router";
 import { useState, useRef, useCallback, useEffect } from "react";
+import { v4 as uuidv4 } from 'uuid';
+
+// Debug-related interfaces
+interface BreakpointData {
+  id: string;
+  line: number;
+  file: string;
+  enabled: boolean;
+  condition?: string;
+  hitCount: number;
+}
+
+interface VariableData {
+  name: string;
+  value: string;
+  type: string;
+  scope: 'local' | 'global' | 'builtin';
+  expandable?: boolean;
+  children?: VariableData[];
+}
+
+interface WatchExpression {
+  id: string;
+  expression: string;
+  value: string;
+  error?: string;
+}
+
+interface CallStackFrame {
+  id: string;
+  function: string;
+  file: string;
+  line: number;
+  variables: VariableData[];
+}
+
+interface DebugSession {
+  isActive: boolean;
+  isRunning: boolean;
+  isPaused: boolean;
+  currentLine?: number;
+  currentFile?: string;
+  callStack: CallStackFrame[];
+  variables: VariableData[];
+  watchExpressions: WatchExpression[];
+  output: string[];
+}
 
 // Client-side Monaco Editor component
 function ClientOnlyEditor({ 
@@ -9,7 +56,10 @@ function ClientOnlyEditor({
   height = "100%",
   theme = "neon-dark",
   options = {},
-  onMount
+  onMount,
+  breakpoints = [],
+  currentDebugLine,
+  onBreakpointToggle
 }: {
   language: string;
   value: string;
@@ -18,10 +68,16 @@ function ClientOnlyEditor({
   theme?: string;
   options?: any;
   onMount?: (editor: any, monaco: any) => void;
+  breakpoints?: BreakpointData[];
+  currentDebugLine?: number;
+  onBreakpointToggle?: (line: number) => void;
 }) {
   const [Editor, setEditor] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
+  const [editorInstance, setEditorInstance] = useState<any>(null);
+  const [monacoInstance, setMonacoInstance] = useState<any>(null);
+  const [decorationsCollection, setDecorationsCollection] = useState<any>(null);
 
   useEffect(() => {
     // Ensure we're on the client side
@@ -38,6 +94,50 @@ function ClientOnlyEditor({
       });
     }
   }, []);
+
+  // Update decorations when breakpoints or currentDebugLine change
+  useEffect(() => {
+    if (!editorInstance || !monacoInstance || !decorationsCollection) return;
+
+    try {
+      const decorations = [];
+
+      // Add breakpoint decorations
+      console.log('Applying decorations for breakpoints:', breakpoints);
+      breakpoints.forEach(bp => {
+        decorations.push({
+          range: new monacoInstance.Range(bp.line, 1, bp.line, 1),
+          options: {
+            isWholeLine: true,
+            className: bp.enabled ? 'breakpoint-enabled' : 'breakpoint-disabled',
+            glyphMarginClassName: bp.enabled ? 'breakpoint-glyph-enabled' : 'breakpoint-glyph-disabled',
+            glyphMarginHoverMessage: { value: `Breakpoint ${bp.enabled ? 'enabled' : 'disabled'} - Click to toggle` }
+          }
+        });
+      });
+
+      // Add current debug line decoration
+      if (currentDebugLine) {
+        decorations.push({
+          range: new monacoInstance.Range(currentDebugLine, 1, currentDebugLine, 1),
+          options: {
+            isWholeLine: true,
+            className: 'debug-current-line',
+            glyphMarginClassName: 'debug-current-line-glyph'
+          }
+        });
+      }
+
+      // Clear and set new decorations
+      decorationsCollection.clear();
+      decorationsCollection.set(decorations);
+      
+      // Force editor layout update
+      editorInstance.layout();
+    } catch (error) {
+      console.warn('Error updating Monaco decorations:', error);
+    }
+  }, [breakpoints, currentDebugLine, editorInstance, monacoInstance, decorationsCollection]);
 
   // Don't render anything during SSR
   if (!isClient) {
@@ -62,14 +162,385 @@ function ClientOnlyEditor({
       value={value}
       onChange={onChange}
       theme={theme}
-      onMount={onMount}
+      onMount={(editor: any, monaco: any) => {
+        // Store editor and monaco instances
+        setEditorInstance(editor);
+        setMonacoInstance(monaco);
+        
+        // Create decorations collection
+        const collection = editor.createDecorationsCollection();
+        setDecorationsCollection(collection);
+        
+        if (onMount) {
+          onMount(editor, monaco);
+        }
+        
+        // Set up breakpoint handling
+        if (onBreakpointToggle) {
+          editor.onMouseDown((e: any) => {
+            const target = e.target;
+            console.log('Monaco click:', {
+              targetType: target.type,
+              position: target.position,
+              lineNumber: target.position?.lineNumber,
+              glyphMargin: target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN,
+              lineNumbers: target.type === monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS
+            });
+            
+            // Handle clicks on both the glyph margin and line numbers
+            if (target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN || 
+                target.type === monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS) {
+              const line = target.position.lineNumber;
+              console.log('Toggling breakpoint on line:', line);
+              onBreakpointToggle(line);
+            }
+          });
+        }
+      }}
                   options={{
               fontFamily: "'Noto Sans Mono', 'JetBrains Mono', 'Source Code Pro', 'Fira Code', 'SF Mono', Monaco, 'Consolas', 'Courier New', monospace",
               fontLigatures: true,
               fontWeight: '300', // Light weight
+              glyphMargin: true, // Enable glyph margin for breakpoints
+              lineNumbers: 'on', // Ensure line numbers are visible
+              lineNumbersMinChars: 3, // Minimum width for line numbers
               ...options
             }}
     />
+  );
+}
+
+// Debug panel components
+function VariablesPanel({ variables, onVariableExpand }: { 
+  variables: VariableData[]; 
+  onVariableExpand: (name: string) => void; 
+}) {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const renderVariable = (variable: VariableData, level = 0) => (
+    <div key={variable.name} className="mb-0.5" style={{ marginLeft: `${level * 12}px` }}>
+      <div className="flex items-center text-xs py-0.5 px-2 hover:bg-slate-800/50 rounded">
+        <span className="text-blue-300 font-mono">{variable.name}:</span>
+        <span className="text-gray-300 ml-2 font-mono">{variable.value}</span>
+        <span className="text-gray-500 ml-2 text-xs">({variable.type})</span>
+        {variable.expandable && (
+          <button 
+            onClick={() => onVariableExpand(variable.name)}
+            className="ml-2 text-purple-400 hover:text-purple-300"
+          >
+            {variable.children ? '−' : '+'}
+          </button>
+        )}
+      </div>
+      {variable.children && variable.children.map(child => renderVariable(child, level + 1))}
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col h-full">
+      <button 
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="px-2 py-1 text-xs font-semibold text-white flex items-center justify-between hover:bg-slate-800/50 transition-colors"
+      >
+        <div className="flex items-center gap-1">
+          <svg className="w-3 h-3 text-blue-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c0 .621.504 1.125 1.125 1.125H18a2.25 2.25 0 002.25-2.25V9.375c0-.621-.504-1.125-1.125-1.125H15M1.5 4.5l2.25 2.25L6 4.5" />
+          </svg>
+          Variables
+        </div>
+        <svg 
+          className={`w-3 h-3 text-gray-400 transition-transform ${isCollapsed ? 'rotate-0' : 'rotate-180'}`} 
+          fill="none" 
+          viewBox="0 0 24 24" 
+          strokeWidth={1.5} 
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
+      </button>
+      {!isCollapsed && (
+        <div className="flex-1 px-2 pb-1 space-y-0.5 overflow-y-auto debug-panel-scrollbar">
+          {variables.length === 0 ? (
+            <div className="text-gray-500 text-xs italic">No variables in scope</div>
+          ) : (
+            variables.map(variable => renderVariable(variable))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WatchPanel({ watchExpressions, onAddWatch, onRemoveWatch, onEditWatch }: {
+  watchExpressions: WatchExpression[];
+  onAddWatch: (expression: string) => void;
+  onRemoveWatch: (id: string) => void;
+  onEditWatch: (id: string, expression: string) => void;
+}) {
+  const [newExpression, setNewExpression] = useState('');
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  return (
+    <div className="flex flex-col h-full">
+      <button 
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="px-2 py-1 text-xs font-semibold text-white flex items-center justify-between hover:bg-slate-800/50 transition-colors"
+      >
+        <div className="flex items-center gap-1">
+          <svg className="w-3 h-3 text-green-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          Watch
+        </div>
+        <svg 
+          className={`w-3 h-3 text-gray-400 transition-transform ${isCollapsed ? 'rotate-0' : 'rotate-180'}`} 
+          fill="none" 
+          viewBox="0 0 24 24" 
+          strokeWidth={1.5} 
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
+      </button>
+      
+      {!isCollapsed && (
+        <div className="flex-1 px-2 pb-1 flex flex-col">
+          {/* Add new watch expression */}
+          <div className="flex gap-1 mb-1">
+            <input
+              type="text"
+              value={newExpression}
+              onChange={(e) => setNewExpression(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && newExpression.trim()) {
+                  onAddWatch(newExpression.trim());
+                  setNewExpression('');
+                }
+              }}
+              placeholder="Add expression to watch..."
+              className="flex-1 px-2 py-1 bg-slate-900 border border-slate-700 rounded text-xs text-white placeholder-gray-400"
+            />
+            <button
+              onClick={() => {
+                if (newExpression.trim()) {
+                  onAddWatch(newExpression.trim());
+                  setNewExpression('');
+                }
+              }}
+              className="px-2 py-1 bg-green-600 hover:bg-green-500 text-white rounded text-xs"
+            >
+              +
+            </button>
+          </div>
+          
+          {/* Watch expressions list */}
+          <div className="flex-1 space-y-0.5 overflow-y-auto debug-panel-scrollbar">
+            {watchExpressions.length === 0 ? (
+              <div className="text-gray-500 text-xs italic">No watch expressions</div>
+            ) : (
+              watchExpressions.map(watch => (
+                <div key={watch.id} className="flex items-center gap-2 p-1 bg-slate-800/50 rounded">
+                  <div className="flex-1">
+                    <div className="text-xs font-mono text-blue-300">{watch.expression}</div>
+                    <div className="text-xs font-mono text-gray-300">
+                      {watch.error ? (
+                        <span className="text-red-400">{watch.error}</span>
+                      ) : (
+                        watch.value
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => onRemoveWatch(watch.id)}
+                    className="p-1 text-red-400 hover:text-red-300 text-xs"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CallStackPanel({ callStack, onFrameSelect }: {
+  callStack: CallStackFrame[];
+  onFrameSelect: (frameId: string) => void;
+}) {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  return (
+    <div className="flex flex-col h-full">
+      <button 
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="px-2 py-1 text-xs font-semibold text-white flex items-center justify-between hover:bg-slate-800/50 transition-colors"
+      >
+        <div className="flex items-center gap-1">
+          <svg className="w-3 h-3 text-purple-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0l4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0l-5.571-3" />
+          </svg>
+          Call Stack
+        </div>
+        <svg 
+          className={`w-3 h-3 text-gray-400 transition-transform ${isCollapsed ? 'rotate-0' : 'rotate-180'}`} 
+          fill="none" 
+          viewBox="0 0 24 24" 
+          strokeWidth={1.5} 
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
+      </button>
+      {!isCollapsed && (
+        <div className="flex-1 px-2 pb-1 space-y-0.5 overflow-y-auto debug-panel-scrollbar">
+          {callStack.length === 0 ? (
+            <div className="text-gray-500 text-xs italic">No active call stack</div>
+          ) : (
+            callStack.map((frame, index) => (
+              <button
+                key={frame.id}
+                onClick={() => onFrameSelect(frame.id)}
+                className="w-full text-left p-1 bg-slate-800/50 hover:bg-slate-700/50 rounded text-xs"
+              >
+                <div className="text-blue-300 font-mono">{frame.function}</div>
+                <div className="text-gray-400 text-xs">{frame.file}:{frame.line}</div>
+                {index === 0 && <div className="text-green-400 text-xs">← current</div>}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BreakpointsPanel({ breakpoints, onToggleBreakpoint, onRemoveBreakpoint, onAddCondition }: {
+  breakpoints: BreakpointData[];
+  onToggleBreakpoint: (id: string) => void;
+  onRemoveBreakpoint: (id: string) => void;
+  onAddCondition: (id: string, condition: string) => void;
+}) {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  return (
+    <div className="flex flex-col h-full">
+      <button 
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="px-2 py-1 text-xs font-semibold text-white flex items-center justify-between hover:bg-slate-800/50 transition-colors"
+      >
+        <div className="flex items-center gap-1">
+          <svg className="w-3 h-3 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+          Breakpoints
+        </div>
+        <svg 
+          className={`w-3 h-3 text-gray-400 transition-transform ${isCollapsed ? 'rotate-0' : 'rotate-180'}`} 
+          fill="none" 
+          viewBox="0 0 24 24" 
+          strokeWidth={1.5} 
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
+      </button>
+      {!isCollapsed && (
+        <div className="flex-1 px-2 pb-1 space-y-0.5 overflow-y-auto debug-panel-scrollbar">
+          {breakpoints.length === 0 ? (
+            <div className="text-gray-500 text-xs italic">No breakpoints set</div>
+          ) : (
+            breakpoints.map(bp => (
+              <div key={bp.id} className="p-1 bg-slate-800/50 rounded">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => onToggleBreakpoint(bp.id)}
+                      className={`w-3 h-3 rounded-full ${bp.enabled ? 'bg-red-500' : 'bg-gray-500'}`}
+                    />
+                    <span className="text-xs font-mono text-blue-300">
+                      {bp.file}:{bp.line}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => onRemoveBreakpoint(bp.id)}
+                    className="p-1 text-red-400 hover:text-red-300 text-xs"
+                  >
+                    ×
+                  </button>
+                </div>
+                {bp.condition && (
+                  <div className="text-xs text-gray-400 mt-1">
+                    Condition: {bp.condition}
+                  </div>
+                )}
+                <div className="text-xs text-gray-500">
+                  Hit count: {bp.hitCount}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Debug Console Component
+function DebugConsole({ debugSession, onDebugCommand }: {
+  debugSession: DebugSession;
+  onDebugCommand: (command: string) => void;
+}) {
+  const [command, setCommand] = useState('');
+
+  return (
+    <div className="h-full flex flex-col">
+      <div 
+        className="flex-1 overflow-y-auto p-3 bg-black text-gray-300 text-sm"
+        style={{
+          fontFamily: "'Noto Sans Mono', 'JetBrains Mono', 'SF Mono', 'Source Code Pro', 'Menlo', 'Monaco', 'Consolas', monospace",
+          fontWeight: '300',
+          letterSpacing: '0.1px'
+        }}
+      >
+        {debugSession.output.map((line, index) => (
+          <div key={index} className="whitespace-pre-wrap">{line}</div>
+        ))}
+      </div>
+      <div className="p-2 border-t border-slate-700">
+        <div className="flex gap-2">
+          <span 
+            className="text-purple-400"
+            style={{
+              fontFamily: "'Noto Sans Mono', 'JetBrains Mono', 'SF Mono', 'Source Code Pro', 'Menlo', 'Monaco', 'Consolas', monospace",
+              fontWeight: '300'
+            }}
+          >
+            debug&gt;
+          </span>
+          <input
+            type="text"
+            value={command}
+            onChange={(e) => setCommand(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter' && command.trim()) {
+                onDebugCommand(command.trim());
+                setCommand('');
+              }
+            }}
+            className="flex-1 bg-transparent text-white outline-none"
+            style={{
+              fontFamily: "'Noto Sans Mono', 'JetBrains Mono', 'SF Mono', 'Source Code Pro', 'Menlo', 'Monaco', 'Consolas', monospace",
+              fontWeight: '300'
+            }}
+            placeholder="Enter debug command..."
+          />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -202,23 +673,35 @@ export default function Home() {
             
             <AlgorithmCard
               title="Hash Table"
-              description="Key-value storage with hash functions for fast data retrieval and storage"
+              description="Key-value pairs with hash-based indexing for efficient data retrieval"
               href="/hashtable"
-              icon="🔑"
+              icon="🗝️"
               status="available"
-              neonColor="purple-400"
+              neonColor="pink-400"
               gradient=""
               textColor="text-white"
               hoverGradient=""
             />
             
             <AlgorithmCard
-              title="Heap (Priority Queue)"
-              description="Binary tree structure for priority-based operations and efficient sorting"
+              title="HeapQ (Priority Queue)"
+              description="Complete binary tree maintaining heap property for priority-based operations"
               href="/heapq"
-              icon="⛰️"
+              icon="🔺"
               status="available"
-              neonColor="pink-400"
+              neonColor="indigo-400"
+              gradient=""
+              textColor="text-white"
+              hoverGradient=""
+            />
+            
+            <AlgorithmCard
+              title="Java"
+              description="Explore Java programming concepts and data structure implementations"
+              href="/java"
+              icon="☕"
+              status="available"
+              neonColor="amber-400"
               gradient=""
               textColor="text-white"
               hoverGradient=""
@@ -227,7 +710,7 @@ export default function Home() {
         </div>
 
         {/* Right Side - Coding Playground */}
-        <div className="w-[65%] pl-4">
+        <div className="flex-1 pl-4">
           <CodingPlayground />
         </div>
       </div>
@@ -795,17 +1278,33 @@ function FileTreeNode({
 function CodingPlayground() {
   const [activeTab, setActiveTab] = useState('python');
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
-  
-  // Debug state
-  const [isDebugging, setIsDebugging] = useState(false);
-  const [breakpoints, setBreakpoints] = useState<Set<number>>(new Set());
-  const [currentLine, setCurrentLine] = useState<number | null>(null);
-  const [debugVariables, setDebugVariables] = useState<{[key: string]: any}>({});
-  const [watchExpressions, setWatchExpressions] = useState<string[]>([]);
-  const [watchValues, setWatchValues] = useState<{[key: string]: any}>({});
-  const [callStack, setCallStack] = useState<Array<{function: string, line: number, file: string}>>([]);
-  const [debugOutput, setDebugOutput] = useState<string>('');
   const [editorTheme, setEditorTheme] = useState('neon-dark');
+  
+  // Debug mode state
+  const [isDebugMode, setIsDebugMode] = useState(false);
+  const [debugSession, setDebugSession] = useState<DebugSession>({
+    isActive: false,
+    isRunning: false,
+    isPaused: false,
+    callStack: [],
+    variables: [],
+    watchExpressions: [],
+    output: []
+  });
+  const [breakpoints, setBreakpoints] = useState<BreakpointData[]>([]);
+  const [currentDebugLine, setCurrentDebugLine] = useState<number | undefined>();
+  
+  // Debug panel resize state
+  const [debugPanelHeights, setDebugPanelHeights] = useState({
+    variables: 25,
+    watch: 25,
+    callStack: 25,
+    breakpoints: 25
+  });
+  const [debugConsoleHeight, setDebugConsoleHeight] = useState(30); // percentage
+  const [debugPanelWidth, setDebugPanelWidth] = useState(280); // pixels
+  const [isResizingDebugPanel, setIsResizingDebugPanel] = useState<string | null>(null);
+  const [isResizingDebugWidth, setIsResizingDebugWidth] = useState(false);
   
   // Initialize file system with sample files
   const [fileSystem, setFileSystem] = useState<FileSystemNode>({
@@ -815,7 +1314,7 @@ function CodingPlayground() {
       {
         name: 'main.py',
         type: 'file',
-        content: '# Hello World in Python\n# Python with Pyodide WebAssembly\n\nprint("Hello, World!")\nprint("Welcome to Python programming!")\n\n# You can use advanced libraries like:\n# import pandas as pd\n# import numpy as np\n# import scikit-learn\n\nname = input("What\'s your name? ")\nprint(f"Nice to meet you, {name}!")'
+        content: '# Python Debugging Example\n# This code demonstrates various debugging scenarios\n\ndef factorial(n):\n    """Calculate factorial with recursive function."""\n    if n <= 1:\n        return 1\n    return n * factorial(n - 1)\n\ndef fibonacci_sequence(count):\n    """Generate fibonacci sequence."""\n    fib_list = []\n    a, b = 0, 1\n    for i in range(count):\n        fib_list.append(a)\n        a, b = b, a + b\n    return fib_list\n\ndef process_data(numbers):\n    """Process a list of numbers."""\n    total = 0\n    squares = []\n    \n    for num in numbers:\n        square = num ** 2\n        squares.append(square)\n        total += square\n    \n    return {\n        "original": numbers,\n        "squares": squares, \n        "sum_of_squares": total,\n        "average": total / len(numbers) if numbers else 0\n    }\n\ndef main():\n    """Main function demonstrating debugging features."""\n    print("=== Python Debugging Demo ===")\n    \n    # Test factorial\n    n = 5\n    fact_result = factorial(n)\n    print(f"Factorial of {n}: {fact_result}")\n    \n    # Test fibonacci\n    fib_count = 8\n    fib_result = fibonacci_sequence(fib_count)\n    print(f"Fibonacci sequence ({fib_count} terms): {fib_result}")\n    \n    # Test data processing\n    test_numbers = [1, 2, 3, 4, 5]\n    result = process_data(test_numbers)\n    print(f"Processing results: {result}")\n    \n    # Interactive input\n    user_num = int(input("Enter a number for factorial: "))\n    user_fact = factorial(user_num)\n    print(f"Factorial of {user_num}: {user_fact}")\n\nif __name__ == "__main__":\n    main()'
       },
       {
         name: 'main.cpp',
@@ -998,6 +1497,281 @@ function CodingPlayground() {
     if (selectedFiles.has(currentFile)) {
       setCurrentFile('/workspace/main.py');
     }
+  };
+
+  // Debug handlers
+  const handleBreakpointToggle = (line: number) => {
+    console.log('handleBreakpointToggle called with line:', line, 'file:', currentFile);
+    setBreakpoints(prev => {
+      const existingIndex = prev.findIndex(bp => bp.line === line && bp.file === currentFile);
+      console.log('Existing breakpoints:', prev);
+      console.log('Existing index:', existingIndex);
+      
+      if (existingIndex >= 0) {
+        const newBreakpoints = prev.filter((_, index) => index !== existingIndex);
+        console.log('Removing breakpoint, new array:', newBreakpoints);
+        return newBreakpoints;
+      } else {
+        const newBreakpoint: BreakpointData = {
+          id: uuidv4(),
+          line,
+          file: currentFile,
+          enabled: true,
+          hitCount: 0
+        };
+        const newBreakpoints = [...prev, newBreakpoint];
+        console.log('Adding breakpoint, new array:', newBreakpoints);
+        return newBreakpoints;
+      }
+    });
+  };
+
+  const handleStartDebug = async () => {
+    if (activeTab !== 'python') {
+      alert('Debugging is currently only supported for Python');
+      return;
+    }
+
+    setIsDebugMode(true);
+    setDebugSession(prev => ({
+      ...prev,
+      isActive: true,
+      isRunning: false,
+      isPaused: false,
+      output: ['🐛 Debug session started...', '📝 Set breakpoints by clicking on line numbers', '▶️ Use debug controls to step through code', '']
+    }));
+
+    // Initialize with sample variables
+    const sampleVariables: VariableData[] = [
+      { name: 'n', value: '5', type: 'int', scope: 'local' },
+      { name: 'fib_count', value: '8', type: 'int', scope: 'local' },
+      { name: 'test_numbers', value: '[1, 2, 3, 4, 5]', type: 'list', scope: 'local', expandable: true },
+      { name: '__name__', value: '"__main__"', type: 'str', scope: 'global' }
+    ];
+
+    const sampleCallStack: CallStackFrame[] = [
+      {
+        id: uuidv4(),
+        function: 'main',
+        file: currentFile,
+        line: 34,
+        variables: sampleVariables
+      }
+    ];
+
+    setDebugSession(prev => ({
+      ...prev,
+      variables: sampleVariables,
+      callStack: sampleCallStack
+    }));
+  };
+
+  const handleStopDebug = () => {
+    setIsDebugMode(false);
+    setDebugSession({
+      isActive: false,
+      isRunning: false,
+      isPaused: false,
+      callStack: [],
+      variables: [],
+      watchExpressions: [],
+      output: []
+    });
+    setCurrentDebugLine(undefined);
+  };
+
+  const handleDebugStep = () => {
+    if (!debugSession.isActive) return;
+    
+    // Simulate stepping through code
+    const lines = [34, 37, 38, 41, 42, 45, 46];
+    const currentIndex = currentDebugLine ? lines.indexOf(currentDebugLine) : -1;
+    const nextIndex = (currentIndex + 1) % lines.length;
+    setCurrentDebugLine(lines[nextIndex]);
+
+    // Update variables based on current line
+    const mockVariableUpdates: { [key: number]: VariableData[] } = {
+      38: [
+        { name: 'n', value: '5', type: 'int', scope: 'local' },
+        { name: 'fact_result', value: '120', type: 'int', scope: 'local' },
+      ],
+      42: [
+        { name: 'n', value: '5', type: 'int', scope: 'local' },
+        { name: 'fact_result', value: '120', type: 'int', scope: 'local' },
+        { name: 'fib_count', value: '8', type: 'int', scope: 'local' },
+        { name: 'fib_result', value: '[0, 1, 1, 2, 3, 5, 8, 13]', type: 'list', scope: 'local', expandable: true },
+      ]
+    };
+
+    if (mockVariableUpdates[lines[nextIndex]]) {
+      setDebugSession(prev => ({
+        ...prev,
+        variables: mockVariableUpdates[lines[nextIndex]],
+        output: [...prev.output, `→ Line ${lines[nextIndex]}: ${getLineDescription(lines[nextIndex])}`]
+      }));
+    }
+  };
+
+  const getLineDescription = (line: number): string => {
+    const descriptions: { [key: number]: string } = {
+      34: 'Entering main function',
+      37: 'Calculating factorial of 5',
+      38: 'factorial(5) returned 120',
+      41: 'Generating fibonacci sequence',
+      42: 'fibonacci_sequence(8) completed',
+      45: 'Processing test data',
+      46: 'process_data completed'
+    };
+    return descriptions[line] || 'Executing code';
+  };
+
+  const handleAddWatch = (expression: string) => {
+    const newWatch: WatchExpression = {
+      id: uuidv4(),
+      expression,
+      value: evaluateWatchExpression(expression),
+    };
+    
+    setDebugSession(prev => ({
+      ...prev,
+      watchExpressions: [...prev.watchExpressions, newWatch]
+    }));
+  };
+
+  const evaluateWatchExpression = (expression: string): string => {
+    // Mock evaluation for demo purposes
+    const mockValues: { [key: string]: string } = {
+      'n': '5',
+      'fact_result': '120',
+      'fib_count': '8',
+      'len(test_numbers)': '5',
+      'test_numbers[0]': '1',
+      'sum(test_numbers)': '15'
+    };
+    return mockValues[expression] || 'undefined';
+  };
+
+  const handleRemoveWatch = (id: string) => {
+    setDebugSession(prev => ({
+      ...prev,
+      watchExpressions: prev.watchExpressions.filter(w => w.id !== id)
+    }));
+  };
+
+  const handleDebugCommand = (command: string) => {
+    const commands = command.toLowerCase().split(' ');
+    const cmd = commands[0];
+    
+    let response = '';
+    switch (cmd) {
+      case 'help':
+        response = 'Debug commands:\n• step - step to next line\n• continue - continue execution\n• print <var> - print variable value\n• break <line> - set breakpoint\n• clear - clear all breakpoints';
+        break;
+      case 'step':
+        handleDebugStep();
+        response = 'Stepped to next line';
+        break;
+      case 'continue':
+        response = 'Continuing execution...';
+        break;
+      case 'print':
+        const varName = commands[1];
+        response = varName ? `${varName} = ${evaluateWatchExpression(varName)}` : 'Usage: print <variable>';
+        break;
+      default:
+        response = `Unknown command: ${cmd}. Type 'help' for available commands.`;
+    }
+    
+    setDebugSession(prev => ({
+      ...prev,
+      output: [...prev.output, `debug> ${command}`, response, '']
+    }));
+  };
+
+  // Debug panel resize handlers
+  const handleDebugPanelMouseDown = (panelType: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizingDebugPanel(panelType);
+    
+    const startY = e.clientY;
+    const startHeight = debugPanelHeights[panelType as keyof typeof debugPanelHeights];
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      const container = document.querySelector('.debug-panels-container');
+      if (!container) return;
+      
+      const containerRect = container.getBoundingClientRect();
+      const deltaY = e.clientY - startY;
+      const containerHeight = containerRect.height;
+      const deltaPercent = (deltaY / containerHeight) * 100;
+      
+      setDebugPanelHeights(prev => {
+        const newHeight = Math.max(10, Math.min(60, startHeight + deltaPercent));
+        return {
+          ...prev,
+          [panelType]: newHeight
+        };
+      });
+    };
+    
+    const handleMouseUp = () => {
+      setIsResizingDebugPanel(null);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleDebugConsoleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    const startY = e.clientY;
+    const startHeight = debugConsoleHeight;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      const container = document.querySelector('.debug-editor-container');
+      if (!container) return;
+      
+      const containerRect = container.getBoundingClientRect();
+      const deltaY = startY - e.clientY; // Inverted for console
+      const containerHeight = containerRect.height;
+      const deltaPercent = (deltaY / containerHeight) * 100;
+      
+      setDebugConsoleHeight(prev => Math.max(15, Math.min(50, startHeight + deltaPercent)));
+    };
+    
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleDebugWidthMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizingDebugWidth(true);
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      const mainContainer = document.querySelector('.flex-1.min-h-0.flex');
+      if (mainContainer) {
+        const rect = mainContainer.getBoundingClientRect();
+        const newWidth = Math.max(250, Math.min(600, e.clientX - rect.left));
+        setDebugPanelWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingDebugWidth(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
   };
 
   // Initialize current file content
@@ -1625,98 +2399,469 @@ function CodingPlayground() {
           
           {/* Center Title */}
           <div className="flex-1 flex justify-center">
-                            <h2 className="text-3xl font-bold" style={{ fontFamily: 'Moirai One, serif', color: `rgb(${languageColor.rgb})` }}>Playground</h2>
+            <h2 className="text-3xl font-bold" style={{ fontFamily: 'Moirai One, serif', color: `rgb(${languageColor.rgb})` }}>
+              {isDebugMode ? 'Debug Mode' : 'Playground'}
+            </h2>
           </div>
           
           {/* Right Side - Controls */}
           <div className="flex items-center gap-3">
-            {/* Run Button */}
-            <button
-              onClick={runCode}
-              disabled={isRunning || languageStatuses[activeTab] !== 'ready'}
-              className="w-[100px] h-10 px-4 py-2 bg-slate-950/80 border-2 border-emerald-400/50 hover:border-emerald-400 disabled:border-gray-600 text-emerald-400 hover:text-emerald-300 disabled:text-gray-500 rounded-3xl text-sm font-medium transition-colors shadow-[0_0_10px_rgba(52,211,153,0.3)] flex items-center justify-center gap-2"
-            >
-              {languageStatuses[activeTab] === 'ready' && !isRunning && (
-                <svg className="w-4 h-4 stroke-current" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.25l13.5 7.5-13.5 7.5V5.25z" />
-                </svg>
-              )}
-              {isRunning && (
-                <svg className="w-4 h-4 stroke-current animate-spin" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                </svg>
-              )}
-              {(languageStatuses[activeTab] === 'loading' || languageStatuses[activeTab] === 'none') && (
-                <svg className="w-4 h-4 stroke-current animate-spin" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                </svg>
-              )}
-              <span>
-                {isRunning ? 'Running...' : 
-                 languageStatuses[activeTab] === 'loading' ? 'Loading...' :
-                 languageStatuses[activeTab] === 'ready' ? 'Run' : 'Loading...'}
-              </span>
-            </button>
+            {!isDebugMode ? (
+              <>
+                {/* Debug Button */}
+                <button
+                  onClick={handleStartDebug}
+                  disabled={activeTab !== 'python'}
+                  className="w-[100px] h-10 px-4 py-2 bg-slate-950/80 border-2 border-purple-400/50 hover:border-purple-400 disabled:border-gray-600 text-purple-400 hover:text-purple-300 disabled:text-gray-500 rounded-3xl text-sm font-medium transition-colors shadow-[0_0_10px_rgba(168,85,247,0.3)] flex items-center justify-center gap-2"
+                  title={activeTab !== 'python' ? 'Debugging only available for Python' : 'Start debug session'}
+                >
+                  <svg className="w-4 h-4 stroke-current" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                  </svg>
+                  Debug
+                </button>
+                
+                {/* Run Button */}
+                <button
+                  onClick={runCode}
+                  disabled={isRunning || languageStatuses[activeTab] !== 'ready'}
+                  className="w-[100px] h-10 px-4 py-2 bg-slate-950/80 border-2 border-emerald-400/50 hover:border-emerald-400 disabled:border-gray-600 text-emerald-400 hover:text-emerald-300 disabled:text-gray-500 rounded-3xl text-sm font-medium transition-colors shadow-[0_0_10px_rgba(52,211,153,0.3)] flex items-center justify-center gap-2"
+                >
+                  {languageStatuses[activeTab] === 'ready' && !isRunning && (
+                    <svg className="w-4 h-4 stroke-current" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.25l13.5 7.5-13.5 7.5V5.25z" />
+                    </svg>
+                  )}
+                  {isRunning && (
+                    <svg className="w-4 h-4 stroke-current animate-spin" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
+                  )}
+                  {(languageStatuses[activeTab] === 'loading' || languageStatuses[activeTab] === 'none') && (
+                    <svg className="w-4 h-4 stroke-current animate-spin" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
+                  )}
+                  <span>
+                    {isRunning ? 'Running...' : 
+                     languageStatuses[activeTab] === 'loading' ? 'Loading...' :
+                     languageStatuses[activeTab] === 'ready' ? 'Run' : 'Loading...'}
+                  </span>
+                </button>
+              </>
+            ) : (
+              <>
+                {/* Debug Controls */}
+                <button
+                  onClick={handleDebugStep}
+                  disabled={!debugSession.isActive}
+                  className="w-[80px] h-10 px-3 py-2 bg-slate-950/80 border-2 border-blue-400/50 hover:border-blue-400 disabled:border-gray-600 text-blue-400 hover:text-blue-300 disabled:text-gray-500 rounded-3xl text-sm font-medium transition-colors shadow-[0_0_10px_rgba(59,130,246,0.3)] flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4 stroke-current" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 8.25V18a2.25 2.25 0 002.25 2.25h13.5A2.25 2.25 0 0021 18V8.25m-18 0V6a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 6v2.25m-18 0h18M9 12.75h6" />
+                  </svg>
+                  Step
+                </button>
+                
+                <button
+                  onClick={handleStopDebug}
+                  className="w-[80px] h-10 px-3 py-2 bg-slate-950/80 border-2 border-red-400/50 hover:border-red-400 text-red-400 hover:text-red-300 rounded-3xl text-sm font-medium transition-colors shadow-[0_0_10px_rgba(248,113,113,0.3)] flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4 stroke-current" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z" />
+                  </svg>
+                  Stop
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Main Content Area - Code Editor + File Explorer */}
+      {/* Main Content Area */}
       <div className="flex-1 min-h-0 flex">
-        {/* Code Editor */}
-        <div className="flex-1 min-h-0" style={{ borderRight: `1px solid rgba(${languageColor.rgb}, 0.2)` }}>
-          <ClientOnlyEditor
-            key={`${currentFile}-${activeTab}`}
-            language={getMonacoLanguage(activeTab)}
-            value={currentFileContent}
-            onChange={handleEditorChange}
-            theme={editorTheme}
-            onMount={(editor: any, monaco: any) => {
-              setupMonacoThemes(monaco);
-              // Ensure the theme is set after custom themes are defined
-              monaco.editor.setTheme(editorTheme);
-            }}
-            options={{
-              minimap: { enabled: false },
-              fontSize: 14,
-              fontWeight: '300', // Light font weight
-              fontFamily: "'Noto Sans Mono', 'JetBrains Mono', 'Source Code Pro', 'SF Mono', Monaco, 'Consolas', monospace",
-              lineNumbers: 'on',
-              roundedSelection: false,
-              scrollBeyondLastLine: false,
-              automaticLayout: true,
-              tabSize: 2,
-              wordWrap: 'on',
-              padding: { top: 16, bottom: 16 },
-              lineHeight: 1.6,
-              letterSpacing: 0.2, // Even more reduced for Noto Sans Mono
-              smoothScrolling: true,
-              cursorBlinking: 'blink',
-              cursorSmoothCaretAnimation: 'on',
-              renderWhitespace: 'selection',
-              renderControlCharacters: false,
-              hideCursorInOverviewRuler: true,
-              overviewRulerBorder: false,
-              scrollbar: {
-                vertical: 'auto',
-                horizontal: 'auto',
-                useShadows: false,
-                verticalHasArrows: false,
-                horizontalHasArrows: false,
-                verticalScrollbarSize: 8,
-                horizontalScrollbarSize: 8,
-                verticalSliderSize: 8,
-                horizontalSliderSize: 8
-              }
-            }}
-          />
-        </div>
+        {isDebugMode ? (
+          <>
+            {/* Debug Layout: Left Debug Panels */}
+            <div 
+              className="bg-slate-900/50 flex flex-col debug-panels-container" 
+              style={{ 
+                width: `${debugPanelWidth}px`,
+                borderRight: `1px solid rgba(${languageColor.rgb}, 0.2)` 
+              }}
+            >
+              {/* Variables Panel */}
+              <div 
+                className="flex flex-col" 
+                style={{ height: `${debugPanelHeights.variables}%` }}
+              >
+                <VariablesPanel 
+                  variables={debugSession.variables} 
+                  onVariableExpand={(name) => console.log('Expand variable:', name)}
+                />
+                <div 
+                  className="h-0.5 cursor-row-resize border-t hover:bg-purple-500/30 transition-colors"
+                  style={{ borderColor: `rgba(${languageColor.rgb}, 0.3)` }}
+                  onMouseDown={(e) => handleDebugPanelMouseDown('variables', e)}
+                  title="Resize Variables Panel"
+                />
+              </div>
+              
+              {/* Watch Panel */}
+              <div 
+                className="flex flex-col" 
+                style={{ height: `${debugPanelHeights.watch}%` }}
+              >
+                <WatchPanel
+                  watchExpressions={debugSession.watchExpressions}
+                  onAddWatch={handleAddWatch}
+                  onRemoveWatch={handleRemoveWatch}
+                  onEditWatch={(id, expr) => console.log('Edit watch:', id, expr)}
+                />
+                <div 
+                  className="h-0.5 cursor-row-resize border-t hover:bg-purple-500/30 transition-colors"
+                  style={{ borderColor: `rgba(${languageColor.rgb}, 0.3)` }}
+                  onMouseDown={(e) => handleDebugPanelMouseDown('watch', e)}
+                  title="Resize Watch Panel"
+                />
+              </div>
+              
+              {/* Call Stack Panel */}
+              <div 
+                className="flex flex-col" 
+                style={{ height: `${debugPanelHeights.callStack}%` }}
+              >
+                <CallStackPanel
+                  callStack={debugSession.callStack}
+                  onFrameSelect={(frameId) => console.log('Select frame:', frameId)}
+                />
+                <div 
+                  className="h-0.5 cursor-row-resize border-t hover:bg-purple-500/30 transition-colors"
+                  style={{ borderColor: `rgba(${languageColor.rgb}, 0.3)` }}
+                  onMouseDown={(e) => handleDebugPanelMouseDown('callStack', e)}
+                  title="Resize Call Stack Panel"
+                />
+              </div>
+              
+              {/* Breakpoints Panel */}
+              <div 
+                className="flex flex-col" 
+                style={{ height: `${debugPanelHeights.breakpoints}%` }}
+              >
+                <BreakpointsPanel
+                  breakpoints={breakpoints}
+                  onToggleBreakpoint={(id) => {
+                    setBreakpoints(prev => prev.map(bp => 
+                      bp.id === id ? { ...bp, enabled: !bp.enabled } : bp
+                    ));
+                  }}
+                  onRemoveBreakpoint={(id) => {
+                    setBreakpoints(prev => prev.filter(bp => bp.id !== id));
+                  }}
+                  onAddCondition={(id, condition) => {
+                    setBreakpoints(prev => prev.map(bp => 
+                      bp.id === id ? { ...bp, condition } : bp
+                    ));
+                  }}
+                />
+              </div>
+            </div>
 
-        {/* File Explorer */}
+            {/* Vertical Resize Handle for Debug Panel Width */}
+            <div 
+              className="w-0.5 cursor-col-resize transition-colors hover:bg-purple-500/30" 
+              style={{ 
+                backgroundColor: `rgba(${languageColor.rgb}, 0.3)`
+              }}
+              onMouseDown={handleDebugWidthMouseDown}
+              title="Resize Debug Panel Width"
+            />
+
+            {/* Center: Code Editor with Debug Features */}
+            <div className="flex-1 min-h-0 flex flex-col debug-editor-container">
+              <div className="flex-1" style={{ height: `${100 - debugConsoleHeight}%` }}>
+                <ClientOnlyEditor
+                  key={`${currentFile}-${activeTab}-debug`}
+                  language={getMonacoLanguage(activeTab)}
+                  value={currentFileContent}
+                  onChange={handleEditorChange}
+                  theme={editorTheme}
+                  breakpoints={breakpoints}
+                  currentDebugLine={currentDebugLine}
+                  onBreakpointToggle={handleBreakpointToggle}
+                  onMount={(editor: any, monaco: any) => {
+                    setupMonacoThemes(monaco);
+                    monaco.editor.setTheme(editorTheme);
+                  }}
+                  options={{
+                    minimap: { enabled: false },
+                    fontSize: 12, // Reduced by 2 pixels from 14
+                    fontWeight: '300',
+                    fontFamily: "'Noto Sans Mono', 'JetBrains Mono', 'Source Code Pro', 'SF Mono', Monaco, 'Consolas', monospace",
+                    lineNumbers: 'on',
+                    roundedSelection: false,
+                    scrollBeyondLastLine: false,
+                    automaticLayout: true,
+                    tabSize: 2,
+                    wordWrap: 'on',
+                    padding: { top: 16, bottom: 16 },
+                    lineHeight: 1.6,
+                    letterSpacing: 0.2,
+                    smoothScrolling: true,
+                    cursorBlinking: 'blink',
+                    cursorSmoothCaretAnimation: 'on',
+                    renderWhitespace: 'selection',
+                    renderControlCharacters: false,
+                    hideCursorInOverviewRuler: true,
+                    overviewRulerBorder: false,
+                    glyphMargin: true,
+                    scrollbar: {
+                      vertical: 'auto',
+                      horizontal: 'auto',
+                      useShadows: false,
+                      verticalHasArrows: false,
+                      horizontalHasArrows: false,
+                      verticalScrollbarSize: 8,
+                      horizontalScrollbarSize: 8,
+                      verticalSliderSize: 8,
+                      horizontalSliderSize: 8
+                    }
+                  }}
+                />
+              </div>
+              
+              {/* Resize Handle for Debug Console */}
+              <div 
+                className="h-0.5 cursor-row-resize border-t hover:bg-purple-500/30 transition-colors"
+                style={{ borderColor: `rgba(${languageColor.rgb}, 0.3)` }}
+                onMouseDown={handleDebugConsoleMouseDown}
+                title="Resize Debug Console"
+              />
+              
+              {/* Debug Console at Bottom */}
+              <div 
+                className="flex flex-col" 
+                style={{ height: `${debugConsoleHeight}%` }}
+              >
+                <DebugConsole
+                  debugSession={debugSession}
+                  onDebugCommand={handleDebugCommand}
+                />
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Normal Layout: Code Editor */}
+            <div className="flex-1 min-h-0" style={{ borderRight: `1px solid rgba(${languageColor.rgb}, 0.2)` }}>
+              <ClientOnlyEditor
+                key={`${currentFile}-${activeTab}`}
+                language={getMonacoLanguage(activeTab)}
+                value={currentFileContent}
+                onChange={handleEditorChange}
+                theme={editorTheme}
+                breakpoints={breakpoints}
+                onBreakpointToggle={handleBreakpointToggle}
+                onMount={(editor: any, monaco: any) => {
+                  setupMonacoThemes(monaco);
+                  monaco.editor.setTheme(editorTheme);
+                }}
+                options={{
+                  glyphMargin: true,
+                  minimap: { enabled: false },
+                  fontSize: 14,
+                  fontWeight: '300',
+                  fontFamily: "'Noto Sans Mono', 'JetBrains Mono', 'Source Code Pro', 'SF Mono', Monaco, 'Consolas', monospace",
+                  lineNumbers: 'on',
+                  roundedSelection: false,
+                  scrollBeyondLastLine: false,
+                  automaticLayout: true,
+                  tabSize: 2,
+                  wordWrap: 'on',
+                  padding: { top: 16, bottom: 16 },
+                  lineHeight: 1.6,
+                  letterSpacing: 0.2,
+                  smoothScrolling: true,
+                  cursorBlinking: 'blink',
+                  cursorSmoothCaretAnimation: 'on',
+                  renderWhitespace: 'selection',
+                  renderControlCharacters: false,
+                  hideCursorInOverviewRuler: true,
+                  overviewRulerBorder: false,
+                  scrollbar: {
+                    vertical: 'auto',
+                    horizontal: 'auto',
+                    useShadows: false,
+                    verticalHasArrows: false,
+                    horizontalHasArrows: false,
+                    verticalScrollbarSize: 8,
+                    horizontalScrollbarSize: 8,
+                    verticalSliderSize: 8,
+                    horizontalSliderSize: 8
+                  }
+                }}
+              />
+            </div>
+          </>
+        )}
+
+        {/* File Explorer - Only show in normal mode */}
+        {!isDebugMode && (
+          <>
+            {/* Vertical Resize Handle */}
+            <div 
+              className="w-0.5 cursor-col-resize transition-colors" 
+              style={{ 
+                backgroundColor: `rgba(${languageColor.rgb}, 0.3)`,
+                boxShadow: `0 0 2px rgba(${languageColor.rgb}, 0.2)`
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = `rgba(${languageColor.rgb}, 0.5)`;
+                e.currentTarget.style.boxShadow = `0 0 4px rgba(${languageColor.rgb}, 0.4)`;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = `rgba(${languageColor.rgb}, 0.3)`;
+                e.currentTarget.style.boxShadow = `0 0 2px rgba(${languageColor.rgb}, 0.2)`;
+              }}
+            />
+          
+            {/* File Explorer Panel */}
+            <div 
+              className="w-56 bg-slate-950/95 overflow-hidden flex flex-col" 
+              style={{ 
+                borderLeft: `1px solid rgba(${languageColor.rgb}, 0.2)`,
+                boxShadow: `inset 1px 0 0 rgba(${languageColor.rgb}, 0.05)`
+              }}
+            >
+              {/* File Explorer Header */}
+              <div 
+                className="p-3 bg-slate-900/90" 
+                style={{ 
+                  borderBottom: `1px solid rgba(${languageColor.rgb}, 0.2)`,
+                  boxShadow: `0 1px 0 rgba(${languageColor.rgb}, 0.05)`
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                    <svg className="w-4 h-4 text-cyan-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                    </svg>
+                    Explorer
+                  </h3>
+                  <button
+                    onClick={deleteSelectedFiles}
+                    className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 ${
+                      selectedFiles.size > 0 
+                        ? 'bg-red-500 text-white hover:bg-red-400 shadow-[0_0_10px_rgba(239,68,68,0.4)] hover:shadow-[0_0_15px_rgba(239,68,68,0.6)]' 
+                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-300'
+                    }`}
+                    title={selectedFiles.size > 0 ? `Delete ${selectedFiles.size} selected item${selectedFiles.size > 1 ? 's' : ''}` : 'Select files to delete'}
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                    </svg>
+                  </button>
+                </div>
+                
+                {/* Current Directory */}
+                <div className="mt-2 text-xs text-gray-400 font-mono">
+                  {currentDirectory}
+                </div>
+              </div>
+              
+              {/* File Tree */}
+              <div className={`flex-1 overflow-y-auto p-2 custom-scrollbar-${activeTab}`}>
+                <FileTreeNode 
+                  node={fileSystem} 
+                  path="/workspace"
+                  expandedFolders={expandedFolders}
+                  onToggleFolder={(path) => {
+                    setExpandedFolders(prev => {
+                      const newSet = new Set(prev);
+                      if (newSet.has(path)) {
+                        newSet.delete(path);
+                      } else {
+                        newSet.add(path);
+                      }
+                      return newSet;
+                    });
+                  }}
+                  onSelectFile={handleFileSelect}
+                  currentFile={currentFile}
+                  selectedFiles={selectedFiles}
+                  onToggleSelection={(path) => {
+                    setSelectedFiles(prev => {
+                      const newSet = new Set(prev);
+                      if (newSet.has(path)) {
+                        newSet.delete(path);
+                      } else {
+                        newSet.add(path);
+                      }
+                      return newSet;
+                    });
+                  }}
+                />
+              </div>
+              
+              {/* File Explorer Actions */}
+              <div 
+                className="p-3 bg-slate-900/90" 
+                style={{ 
+                  borderTop: `1px solid rgba(${languageColor.rgb}, 0.2)`,
+                  boxShadow: `0 -1px 0 rgba(${languageColor.rgb}, 0.05)`
+                }}
+              >
+                <div className="flex gap-4 justify-center">
+                  <button
+                    onClick={() => {
+                      const name = prompt('Enter file name:');
+                      if (name) {
+                        const currentDirPath = currentDirectory === '/workspace' ? '' : currentDirectory.replace('/workspace', '');
+                        createFile(currentDirPath, name);
+                      }
+                    }}
+                    className="w-24 px-3 py-2 bg-cyan-900/20 border border-cyan-400/50 hover:border-cyan-400 text-cyan-400 hover:text-cyan-300 transition-colors text-xs font-medium flex items-center justify-center gap-2 rounded-3xl"
+                    title="New File"
+                  >
+                    <svg className="w-4 h-4 stroke-current" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M14 2v6h6" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-6m-3 3h6" />
+                    </svg>
+                    File
+                  </button>
+                  <button
+                    onClick={() => {
+                      const name = prompt('Enter folder name:');
+                      if (name) {
+                        const currentDirPath = currentDirectory === '/workspace' ? '' : currentDirectory.replace('/workspace', '');
+                        createFolder(currentDirPath, name);
+                      }
+                    }}
+                    className="w-24 px-3 py-2 bg-purple-900/20 border border-purple-400/50 hover:border-purple-400 text-purple-400 hover:text-purple-300 transition-colors text-xs font-medium flex items-center justify-center gap-2 rounded-3xl"
+                    title="New Folder"
+                  >
+                    <svg className="w-4 h-4 stroke-current" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 10.5v6m3-3H9" />
+                    </svg>
+                    Folder
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Console Area - Only show in normal mode */}
+      {!isDebugMode && (
         <>
-          {/* Vertical Resize Handle */}
-          <div 
-            className="w-0.5 cursor-col-resize transition-colors" 
+          {/* Resize Handle */}
+          <div
+            className="h-0.5 cursor-row-resize transition-colors flex-shrink-0"
+            title="Drag to resize console"
+            onMouseDown={handleMouseDown}
             style={{ 
               backgroundColor: `rgba(${languageColor.rgb}, 0.3)`,
               boxShadow: `0 0 2px rgba(${languageColor.rgb}, 0.2)`
@@ -1730,257 +2875,112 @@ function CodingPlayground() {
               e.currentTarget.style.boxShadow = `0 0 2px rgba(${languageColor.rgb}, 0.2)`;
             }}
           />
-          
-          {/* File Explorer Panel */}
+
+          {/* Console Output */}
           <div 
-            className="w-56 bg-slate-950/95 overflow-hidden flex flex-col" 
+            className="flex-shrink-0" 
             style={{ 
-              borderLeft: `1px solid rgba(${languageColor.rgb}, 0.2)`,
-              boxShadow: `inset 1px 0 0 rgba(${languageColor.rgb}, 0.05)`
+              height: `${consoleHeight}%`, 
+              minHeight: '200px'
             }}
           >
-            {/* File Explorer Header */}
-            <div 
-              className="p-3 bg-slate-900/90" 
-              style={{ 
-                borderBottom: `1px solid rgba(${languageColor.rgb}, 0.2)`,
-                boxShadow: `0 1px 0 rgba(${languageColor.rgb}, 0.05)`
-              }}
-            >
-              <div className="flex items-center justify-between">
+            <div className="bg-slate-900/90 px-4 py-2 flex items-center justify-between">
+              <div className="flex items-center gap-3">
                 <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                  <svg className="w-4 h-4 text-cyan-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                  <svg className="w-4 h-4" style={{ color: `rgb(${languageColor.rgb})` }} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" />
                   </svg>
-                  Explorer
+                  <span style={{ color: `rgb(${languageColor.rgb})` }}>Console</span>
                 </h3>
-                <button
-                  onClick={deleteSelectedFiles}
-                  className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 ${
-                    selectedFiles.size > 0 
-                      ? 'bg-red-500 text-white hover:bg-red-400 shadow-[0_0_10px_rgba(239,68,68,0.4)] hover:shadow-[0_0_15px_rgba(239,68,68,0.6)]' 
-                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-300'
-                  }`}
-                  title={selectedFiles.size > 0 ? `Delete ${selectedFiles.size} selected item${selectedFiles.size > 1 ? 's' : ''}` : 'Select files to delete'}
-                >
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                  </svg>
-                </button>
               </div>
               
-              {/* Current Directory */}
-              <div className="mt-2 text-xs text-gray-400 font-mono">
-                {currentDirectory}
+              <div className="flex-1 flex justify-center">
+                <span className="text-xs text-yellow-400">
+                  {languageStatuses[activeTab] === 'loading' ? (
+                    `${languages.find(l => l.id === activeTab)?.name} Loading...`
+                  ) : languageStatuses[activeTab] === 'ready' ? (
+                    `${languages.find(l => l.id === activeTab)?.version} Ready`
+                  ) : languageStatuses[activeTab] === 'error' ? (
+                    `${languages.find(l => l.id === activeTab)?.name} Error`
+                  ) : (
+                    `${languages.find(l => l.id === activeTab)?.name} Initializing...`
+                  )}
+                </span>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    setTerminalOutput('');
+                    setTerminalHistory([]);
+                    setOutput('');
+                  }}
+                  className="px-3 py-1 bg-slate-950/80 border-2 border-red-400/50 hover:border-red-400 text-red-400 hover:text-red-300 rounded-3xl text-xs font-medium transition-colors shadow-[0_0_10px_rgba(248,113,113,0.3)]"
+                >
+                  Clear Console
+                </button>
               </div>
             </div>
-            
-            {/* File Tree */}
-            <div className={`flex-1 overflow-y-auto p-2 custom-scrollbar-${activeTab}`}>
-              <FileTreeNode 
-                node={fileSystem} 
-                path="/workspace"
-                expandedFolders={expandedFolders}
-                onToggleFolder={(path) => {
-                  setExpandedFolders(prev => {
-                    const newSet = new Set(prev);
-                    if (newSet.has(path)) {
-                      newSet.delete(path);
-                    } else {
-                      newSet.add(path);
-                    }
-                    return newSet;
-                  });
-                }}
-                onSelectFile={handleFileSelect}
-                currentFile={currentFile}
-                selectedFiles={selectedFiles}
-                onToggleSelection={(path) => {
-                  setSelectedFiles(prev => {
-                    const newSet = new Set(prev);
-                    if (newSet.has(path)) {
-                      newSet.delete(path);
-                    } else {
-                      newSet.add(path);
-                    }
-                    return newSet;
-                  });
-                }}
-              />
-            </div>
-            
-            {/* File Explorer Actions */}
-            <div 
-              className="p-3 bg-slate-900/90" 
-              style={{ 
-                borderTop: `1px solid rgba(${languageColor.rgb}, 0.2)`,
-                boxShadow: `0 -1px 0 rgba(${languageColor.rgb}, 0.05)`
-              }}
-            >
-              <div className="flex gap-4 justify-center">
-                <button
-                  onClick={() => {
-                    const name = prompt('Enter file name:');
-                    if (name) {
-                      const currentDirPath = currentDirectory === '/workspace' ? '' : currentDirectory.replace('/workspace', '');
-                      createFile(currentDirPath, name);
-                    }
-                  }}
-                  className="w-24 px-3 py-2 bg-cyan-900/20 border border-cyan-400/50 hover:border-cyan-400 text-cyan-400 hover:text-cyan-300 transition-colors text-xs font-medium flex items-center justify-center gap-2 rounded-3xl"
-                  title="New File"
-                >
-                  <svg className="w-4 h-4 stroke-current" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M14 2v6h6" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-6m-3 3h6" />
-                  </svg>
-                  File
-                </button>
-                <button
-                  onClick={() => {
-                    const name = prompt('Enter folder name:');
-                    if (name) {
-                      const currentDirPath = currentDirectory === '/workspace' ? '' : currentDirectory.replace('/workspace', '');
-                      createFolder(currentDirPath, name);
-                    }
-                  }}
-                  className="w-24 px-3 py-2 bg-purple-900/20 border border-purple-400/50 hover:border-purple-400 text-purple-400 hover:text-purple-300 transition-colors text-xs font-medium flex items-center justify-center gap-2 rounded-3xl"
-                  title="New Folder"
-                >
-                  <svg className="w-4 h-4 stroke-current" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 10.5v6m3-3H9" />
-                  </svg>
-                  Folder
-                </button>
+                            <div className={`p-4 text-sm overflow-y-auto font-normal custom-scrollbar-${activeTab} bg-black text-gray-300`} style={{ 
+              height: 'calc(100% - 40px)',
+              fontFamily: "'Noto Sans Mono', 'JetBrains Mono', 'SF Mono', 'Source Code Pro', 'Menlo', 'Monaco', 'Consolas', monospace",
+              fontWeight: '300', // Light font weight for console
+              letterSpacing: '0.1px' // Tighter spacing for Noto Sans Mono
+            }}>
+              <div className="h-full flex flex-col">
+                {/* Console Output Area */}
+                <div className="flex-1 overflow-y-auto">
+                  {/* Welcome message when no output */}
+                  {!output && !terminalOutput && terminalHistory.length === 0 && (
+                    <div className="text-gray-500 text-sm leading-relaxed mb-4">
+                      <div>Welcome to the Algo Visualizer Console! 🚀</div>
+                      <div>Type "help" for available commands or click "Run" to execute code.</div>
+                    </div>
+                  )}
+                  
+                  {/* Language initialization/execution output */}
+                  {output && (
+                    <div className="whitespace-pre-wrap text-blue-300 text-sm leading-relaxed mb-4">
+                      {output}
+                    </div>
+                  )}
+                  
+                  {/* Program execution output */}
+                  {terminalOutput && (
+                    <div className="whitespace-pre-wrap text-white text-sm leading-relaxed mb-4">
+                      {terminalOutput}
+                    </div>
+                  )}
+                  
+                  {/* Command history */}
+                  {terminalHistory.map((line, index) => (
+                    <div key={index} className={`whitespace-pre-wrap text-sm leading-relaxed ${
+                      line.startsWith('$ ') ? 'text-gray-300' : 'text-gray-300'
+                    }`}>
+                      {line}
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Terminal Input */}
+                <form onSubmit={handleTerminalSubmit} className="flex items-center mt-2">
+                  <span className="text-purple-400 text-sm mr-2">$</span>
+                  <input
+                    type="text"
+                    value={terminalInput}
+                    onChange={(e) => setTerminalInput(e.target.value)}
+                    className="flex-1 bg-transparent text-white text-sm outline-none border-none"
+                    placeholder="Type a command..."
+                    style={{ color: 'white' }}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </form>
               </div>
             </div>
           </div>
         </>
-      </div>
-
-      {/* Resize Handle */}
-      <div
-        className="h-0.5 cursor-row-resize transition-colors flex-shrink-0"
-        title="Drag to resize console"
-        onMouseDown={handleMouseDown}
-        style={{ 
-          backgroundColor: `rgba(${languageColor.rgb}, 0.3)`,
-          boxShadow: `0 0 2px rgba(${languageColor.rgb}, 0.2)`
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = `rgba(${languageColor.rgb}, 0.5)`;
-          e.currentTarget.style.boxShadow = `0 0 4px rgba(${languageColor.rgb}, 0.4)`;
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = `rgba(${languageColor.rgb}, 0.3)`;
-          e.currentTarget.style.boxShadow = `0 0 2px rgba(${languageColor.rgb}, 0.2)`;
-        }}
-      />
-
-      {/* Console Output */}
-      <div 
-        className="flex-shrink-0" 
-        style={{ 
-          height: `${consoleHeight}%`, 
-          minHeight: '200px'
-        }}
-      >
-        <div className="bg-slate-900/90 px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-              <svg className="w-4 h-4" style={{ color: `rgb(${languageColor.rgb})` }} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" />
-              </svg>
-              <span style={{ color: `rgb(${languageColor.rgb})` }}>Console</span>
-            </h3>
-          </div>
-          
-          <div className="flex-1 flex justify-center">
-            <span className="text-xs text-yellow-400">
-              {languageStatuses[activeTab] === 'loading' ? (
-                `${languages.find(l => l.id === activeTab)?.name} Loading...`
-              ) : languageStatuses[activeTab] === 'ready' ? (
-                `${languages.find(l => l.id === activeTab)?.version} Ready`
-              ) : languageStatuses[activeTab] === 'error' ? (
-                `${languages.find(l => l.id === activeTab)?.name} Error`
-              ) : (
-                `${languages.find(l => l.id === activeTab)?.name} Initializing...`
-              )}
-            </span>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                setTerminalOutput('');
-                setTerminalHistory([]);
-                setOutput('');
-              }}
-              className="px-3 py-1 bg-slate-950/80 border-2 border-red-400/50 hover:border-red-400 text-red-400 hover:text-red-300 rounded-3xl text-xs font-medium transition-colors shadow-[0_0_10px_rgba(248,113,113,0.3)]"
-            >
-              Clear Console
-            </button>
-          </div>
-        </div>
-        <div className={`p-4 text-sm overflow-y-auto font-normal custom-scrollbar-${activeTab} bg-black text-green-400`} style={{ 
-          height: 'calc(100% - 40px)',
-          fontFamily: "'Noto Sans Mono', 'JetBrains Mono', 'SF Mono', 'Source Code Pro', 'Menlo', 'Monaco', 'Consolas', monospace",
-          fontWeight: '300', // Light font weight for console
-          letterSpacing: '0.1px' // Tighter spacing for Noto Sans Mono
-        }}>
-          <div className="h-full flex flex-col">
-            {/* Console Output Area */}
-            <div className="flex-1 overflow-y-auto">
-              {/* Welcome message when no output */}
-              {!output && !terminalOutput && terminalHistory.length === 0 && (
-                <div className="text-gray-500 font-mono text-sm leading-relaxed mb-4">
-                  <div>Welcome to the Algo Visualizer Console! 🚀</div>
-                  <div>Type "help" for available commands or click "Run" to execute code.</div>
-                </div>
-              )}
-              
-              {/* Language initialization/execution output */}
-              {output && (
-                <div className="whitespace-pre-wrap text-blue-300 font-mono text-sm leading-relaxed mb-4">
-                  {output}
-                </div>
-              )}
-              
-              {/* Program execution output */}
-              {terminalOutput && (
-                <div className="whitespace-pre-wrap text-white font-mono text-sm leading-relaxed mb-4">
-                  {terminalOutput}
-                </div>
-              )}
-              
-              {/* Command history */}
-              {terminalHistory.map((line, index) => (
-                <div key={index} className={`whitespace-pre-wrap font-mono text-sm leading-relaxed ${
-                  line.startsWith('$ ') ? 'text-green-400' : 'text-white'
-                }`}>
-                  {line}
-                </div>
-              ))}
-            </div>
-            
-            {/* Terminal Input */}
-            <form onSubmit={handleTerminalSubmit} className="flex items-center mt-2">
-              <span className="text-purple-400 font-mono text-sm mr-2">$</span>
-              <input
-                type="text"
-                value={terminalInput}
-                onChange={(e) => setTerminalInput(e.target.value)}
-                className="flex-1 bg-transparent text-white font-mono text-sm outline-none border-none"
-                placeholder="Type a command..."
-                style={{ color: 'white' }}
-                autoComplete="off"
-                spellCheck={false}
-              />
-            </form>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
