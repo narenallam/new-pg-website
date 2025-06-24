@@ -51,3 +51,131 @@ body {
     animation: gradient-animation 15s ease infinite;
   }
 }
+
+/* Dynamic Themed Scrollbars */
+.custom-scrollbar-python::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar-python::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+.custom-scrollbar-python::-webkit-scrollbar-thumb {
+  background: rgba(250, 204, 21, 0.6);
+  border-radius: 4px;
+  border: 1px solid rgba(250, 204, 21, 0.3);
+}
+
+.custom-scrollbar-python::-webkit-scrollbar-thumb:hover {
+  background: rgba(250, 204, 21, 0.8);
+  box-shadow: 0 0 4px rgba(250, 204, 21, 0.4);
+}
+
+.custom-scrollbar-cpp::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar-cpp::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+.custom-scrollbar-cpp::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.6);
+  border-radius: 4px;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.custom-scrollbar-cpp::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.8);
+  box-shadow: 0 0 4px rgba(59, 130, 246, 0.4);
+}
+
+.custom-scrollbar-java::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar-java::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+.custom-scrollbar-java::-webkit-scrollbar-thumb {
+  background: rgba(251, 146, 60, 0.6);
+  border-radius: 4px;
+  border: 1px solid rgba(251, 146, 60, 0.3);
+}
+
+.custom-scrollbar-java::-webkit-scrollbar-thumb:hover {
+  background: rgba(251, 146, 60, 0.8);
+  box-shadow: 0 0 4px rgba(251, 146, 60, 0.4);
+}
+
+.custom-scrollbar-go::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar-go::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+.custom-scrollbar-go::-webkit-scrollbar-thumb {
+  background: rgba(34, 211, 238, 0.6);
+  border-radius: 4px;
+  border: 1px solid rgba(34, 211, 238, 0.3);
+}
+
+.custom-scrollbar-go::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 211, 238, 0.8);
+  box-shadow: 0 0 4px rgba(34, 211, 238, 0.4);
+}
+
+.custom-scrollbar-javascript::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar-javascript::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+.custom-scrollbar-javascript::-webkit-scrollbar-thumb {
+  background: rgba(52, 211, 153, 0.6);
+  border-radius: 4px;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.custom-scrollbar-javascript::-webkit-scrollbar-thumb:hover {
+  background: rgba(52, 211, 153, 0.8);
+  box-shadow: 0 0 4px rgba(52, 211, 153, 0.4);
+}
+
+/* Gray scrollbar for algorithm cards section */
+.custom-scrollbar-purple::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.custom-scrollbar-purple::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+}
+
+.custom-scrollbar-purple::-webkit-scrollbar-thumb {
+  background: rgba(107, 114, 128, 0.7);
+  border-radius: 2px;
+  border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+.custom-scrollbar-purple::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.9);
+  box-shadow: 0 0 4px rgba(107, 114, 128, 0.5);
+}

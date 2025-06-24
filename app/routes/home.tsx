@@ -63,11 +63,12 @@ function ClientOnlyEditor({
       onChange={onChange}
       theme={theme}
       onMount={onMount}
-      options={{
-        fontFamily: "'Fira Code', 'JetBrains Mono', 'Source Code Pro', 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace",
-        fontLigatures: true,
-        ...options
-      }}
+                  options={{
+              fontFamily: "'Noto Sans Mono', 'JetBrains Mono', 'Source Code Pro', 'Fira Code', 'SF Mono', Monaco, 'Consolas', 'Courier New', monospace",
+              fontLigatures: true,
+              fontWeight: '300', // Light weight
+              ...options
+            }}
     />
   );
 }
@@ -112,7 +113,7 @@ export default function Home() {
 
       <div className="relative z-10 h-[calc(100vh-160px)] flex px-8 pb-8">
         {/* Left Side - Algorithm Visualizer */}
-        <div className="w-[35%] pr-4 overflow-y-auto">
+        <div className="w-[35%] pr-4 overflow-y-auto custom-scrollbar-purple">
           <div className="grid grid-cols-2 gap-4">
             <AlgorithmCard
               title="LinkedList"
@@ -794,6 +795,16 @@ function FileTreeNode({
 function CodingPlayground() {
   const [activeTab, setActiveTab] = useState('python');
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+  
+  // Debug state
+  const [isDebugging, setIsDebugging] = useState(false);
+  const [breakpoints, setBreakpoints] = useState<Set<number>>(new Set());
+  const [currentLine, setCurrentLine] = useState<number | null>(null);
+  const [debugVariables, setDebugVariables] = useState<{[key: string]: any}>({});
+  const [watchExpressions, setWatchExpressions] = useState<string[]>([]);
+  const [watchValues, setWatchValues] = useState<{[key: string]: any}>({});
+  const [callStack, setCallStack] = useState<Array<{function: string, line: number, file: string}>>([]);
+  const [debugOutput, setDebugOutput] = useState<string>('');
   const [editorTheme, setEditorTheme] = useState('neon-dark');
   
   // Initialize file system with sample files
@@ -847,6 +858,15 @@ function CodingPlayground() {
   
   const [currentFile, setCurrentFile] = useState<string>('/workspace/main.py');
   const [currentFileContent, setCurrentFileContent] = useState<string>('');
+  
+  // Track last selected file for each language
+  const [lastSelectedFiles, setLastSelectedFiles] = useState<{[key: string]: string}>({
+    python: '/workspace/main.py',
+    cpp: '/workspace/main.cpp', 
+    java: '/workspace/Main.java',
+    go: '/workspace/main.go',
+    javascript: '/workspace/main.js'
+  });
   const [currentDirectory, setCurrentDirectory] = useState<string>('/workspace');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['/workspace', '/workspace/src']));
   const [terminalHistory, setTerminalHistory] = useState<string[]>([]);
@@ -1001,6 +1021,12 @@ function CodingPlayground() {
     const content = getFileContent(path);
     setCurrentFileContent(content);
     
+    // Remember this file for the current language
+    setLastSelectedFiles(prev => ({
+      ...prev,
+      [activeTab]: path
+    }));
+    
     // Update language based on file extension
     const fileName = path.split('/').pop() || '';
     const ext = fileName.toLowerCase().split('.').pop();
@@ -1117,7 +1143,35 @@ function CodingPlayground() {
   const [consoleHeight, setConsoleHeight] = useState(35);
   const [isResizing, setIsResizing] = useState(false);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
-  const [showThemeDropdown, setShowThemeDropdown] = useState(false);
+
+  // Console resize handlers
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isResizing || !containerRef.current) return;
+    
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const newHeight = ((containerRect.bottom - e.clientY) / containerRect.height) * 100;
+    setConsoleHeight(Math.max(15, Math.min(65, newHeight)));
+  }, [isResizing]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isResizing, handleMouseMove, handleMouseUp]);
   const [languageStatuses, setLanguageStatuses] = useState<{[key: string]: 'none' | 'loading' | 'ready' | 'error'}>({
     python: 'none',
     cpp: 'none', 
@@ -1137,7 +1191,7 @@ function CodingPlayground() {
     };
     return colorMap[langId] || colorMap['python'];
   };
-  const [activeConsoleTab, setActiveConsoleTab] = useState<'output' | 'terminal'>('output');
+
   const [terminalOutput, setTerminalOutput] = useState('');
   const [pyodideStatus, setPyodideStatus] = useState<'none' | 'loading' | 'ready' | 'error'>('none');
   const [pyodideInstance, setPyodideInstance] = useState<any>(null);
@@ -1357,19 +1411,18 @@ function CodingPlayground() {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (showLanguageDropdown || showThemeDropdown) {
+      if (showLanguageDropdown) {
         setShowLanguageDropdown(false);
-        setShowThemeDropdown(false);
       }
     };
 
-    if (showLanguageDropdown || showThemeDropdown) {
+    if (showLanguageDropdown) {
       document.addEventListener('click', handleClickOutside);
       return () => {
         document.removeEventListener('click', handleClickOutside);
       };
     }
-  }, [showLanguageDropdown, showThemeDropdown]);
+  }, [showLanguageDropdown]);
 
   // Initialize language when selected
   useEffect(() => {
@@ -1378,9 +1431,42 @@ function CodingPlayground() {
     }
   }, [activeTab]);
 
+  // Switch to the last selected file when language changes
+  useEffect(() => {
+    const lastFileForLanguage = lastSelectedFiles[activeTab];
+    if (lastFileForLanguage && lastFileForLanguage !== currentFile) {
+      // Check if the file still exists
+      const fileExists = findFileByPath(lastFileForLanguage.replace('/workspace', ''));
+      if (fileExists) {
+        setCurrentFile(lastFileForLanguage);
+        const content = getFileContent(lastFileForLanguage);
+        setCurrentFileContent(content);
+      } else {
+        // If the file doesn't exist, fall back to the default file for this language
+        const defaultFiles: { [key: string]: string } = {
+          python: '/workspace/main.py',
+          cpp: '/workspace/main.cpp',
+          java: '/workspace/Main.java',
+          go: '/workspace/main.go',
+          javascript: '/workspace/main.js'
+        };
+        const defaultFile = defaultFiles[activeTab];
+        if (defaultFile) {
+          setCurrentFile(defaultFile);
+          const content = getFileContent(defaultFile);
+          setCurrentFileContent(content);
+          // Update the last selected file to the default
+          setLastSelectedFiles(prev => ({
+            ...prev,
+            [activeTab]: defaultFile
+          }));
+        }
+      }
+    }
+  }, [activeTab]);
+
   const initializeLanguage = async (langId: string) => {
     setLanguageStatuses(prev => ({ ...prev, [langId]: 'loading' }));
-    setActiveConsoleTab('output');
     
     const initMessages: {[key: string]: string} = {
       python: '🐍 Initializing Python WebAssembly environment...\n📦 Loading Pyodide runtime\n📚 Installing packages: numpy, pandas, scikit-learn\n⚡ Setting up interpreter',
@@ -1414,7 +1500,6 @@ function CodingPlayground() {
   // Simple run code function
   const runCode = async () => {
     setIsRunning(true);
-    setActiveConsoleTab('terminal'); // Switch to terminal tab automatically
     
     try {
       // Simulate execution
@@ -1447,7 +1532,7 @@ function CodingPlayground() {
   const languageColor = getLanguageColor(activeTab);
   
   return (
-    <div ref={containerRef} className={`bg-slate-950/95 backdrop-blur-md rounded-3xl h-full flex flex-col border-2 ${languageColor.border} ${languageColor.shadow} hover:shadow-[0_0_35px_rgba(${languageColor.rgb},0.4)] transition-all duration-300`} style={{ borderBottomWidth: '4px', borderBottomColor: `rgba(${languageColor.rgb}, 0.9)` }}>
+    <div ref={containerRef} className={`bg-slate-950/95 backdrop-blur-md rounded-3xl h-full flex flex-col border ${languageColor.border} ${languageColor.shadow} hover:shadow-[0_0_35px_rgba(${languageColor.rgb},0.4)] transition-all duration-300`}>
       {/* Header */}
       <div className="p-4 border-b border-slate-800/50 flex-shrink-0">
         <div className="flex items-center justify-between w-full">
@@ -1490,6 +1575,11 @@ function CodingPlayground() {
                       <button
                         key={lang.id}
                         onClick={() => {
+                          // Save the current file as the last selected file for the current language
+                          setLastSelectedFiles(prev => ({
+                            ...prev,
+                            [activeTab]: currentFile
+                          }));
                           setActiveTab(lang.id);
                           setShowLanguageDropdown(false);
                         }}
@@ -1513,46 +1603,23 @@ function CodingPlayground() {
               )}
             </div>
             
-            {/* Theme Selector */}
+            {/* Theme Toggle Icon */}
             <div className="relative">
               <button
-                onClick={() => setShowThemeDropdown(!showThemeDropdown)}
-                className="w-[182px] h-10 px-4 py-2 bg-slate-950/80 border-2 border-purple-400/50 hover:border-purple-400 text-purple-400 hover:text-purple-300 rounded-3xl text-sm font-medium transition-colors flex items-center justify-between shadow-[0_0_10px_rgba(168,85,247,0.3)]"
+                onClick={() => {
+                  // Cycle through themes
+                  const currentIndex = editorThemes.findIndex(t => t.id === editorTheme);
+                  const nextIndex = (currentIndex + 1) % editorThemes.length;
+                  setEditorTheme(editorThemes[nextIndex].id);
+                }}
+                className="w-10 h-10 px-2 py-2 bg-slate-950/80 border-2 border-purple-400/50 hover:border-purple-400 text-purple-400 hover:text-purple-300 rounded-3xl text-sm font-medium transition-colors flex items-center justify-center shadow-[0_0_10px_rgba(168,85,247,0.3)]"
+                title={`Current: ${editorThemes.find(t => t.id === editorTheme)?.name || 'Neon Dark'} - Click to cycle themes`}
               >
-                <div className="flex items-center gap-2">
-                  {getThemeIcon(
-                    editorThemes.find(t => t.id === editorTheme)?.icon || 'neon',
-                    editorThemes.find(t => t.id === editorTheme)?.color || '#22d3ee'
-                  )}
-                  <span className="truncate">{editorThemes.find(t => t.id === editorTheme)?.name}</span>
-                </div>
-                <svg className="w-4 h-4 stroke-current" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                </svg>
+                {getThemeIcon(
+                  editorThemes.find(t => t.id === editorTheme)?.icon || 'neon',
+                  editorThemes.find(t => t.id === editorTheme)?.color || '#22d3ee'
+                )}
               </button>
-              
-              {showThemeDropdown && (
-                <div className="absolute top-full left-0 mt-1 w-full bg-slate-800 border border-slate-700 rounded-3xl shadow-xl z-10 overflow-hidden">
-                  {editorThemes.map((theme) => (
-                    <button
-                      key={theme.id}
-                      onClick={() => {
-                        setEditorTheme(theme.id);
-                        setShowThemeDropdown(false);
-                      }}
-                      className={`w-full px-4 py-2 text-left transition-colors flex items-center gap-2 text-sm border-2 ${
-                        editorTheme === theme.id 
-                          ? 'bg-purple-900/20 border-purple-400 text-purple-400' 
-                          : 'border-transparent text-gray-300 hover:border-purple-400/50 hover:text-purple-300'
-                      }`}
-                    >
-                      {getThemeIcon(theme.icon, theme.color)}
-                      <span>{theme.name}</span>
-                      {theme.isDefault && <span className="text-xs text-gray-400 ml-auto">(Default)</span>}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
           
@@ -1597,7 +1664,7 @@ function CodingPlayground() {
       {/* Main Content Area - Code Editor + File Explorer */}
       <div className="flex-1 min-h-0 flex">
         {/* Code Editor */}
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0" style={{ borderRight: `1px solid rgba(${languageColor.rgb}, 0.2)` }}>
           <ClientOnlyEditor
             key={`${currentFile}-${activeTab}`}
             language={getMonacoLanguage(activeTab)}
@@ -1612,6 +1679,8 @@ function CodingPlayground() {
             options={{
               minimap: { enabled: false },
               fontSize: 14,
+              fontWeight: '300', // Light font weight
+              fontFamily: "'Noto Sans Mono', 'JetBrains Mono', 'Source Code Pro', 'SF Mono', Monaco, 'Consolas', monospace",
               lineNumbers: 'on',
               roundedSelection: false,
               scrollBeyondLastLine: false,
@@ -1620,7 +1689,7 @@ function CodingPlayground() {
               wordWrap: 'on',
               padding: { top: 16, bottom: 16 },
               lineHeight: 1.6,
-              letterSpacing: 0.5,
+              letterSpacing: 0.2, // Even more reduced for Noto Sans Mono
               smoothScrolling: true,
               cursorBlinking: 'blink',
               cursorSmoothCaretAnimation: 'on',
@@ -1634,8 +1703,10 @@ function CodingPlayground() {
                 useShadows: false,
                 verticalHasArrows: false,
                 horizontalHasArrows: false,
-                verticalScrollbarSize: 10,
-                horizontalScrollbarSize: 10
+                verticalScrollbarSize: 8,
+                horizontalScrollbarSize: 8,
+                verticalSliderSize: 8,
+                horizontalSliderSize: 8
               }
             }}
           />
@@ -1644,12 +1715,38 @@ function CodingPlayground() {
         {/* File Explorer */}
         <>
           {/* Vertical Resize Handle */}
-          <div className="w-1 bg-gray-600 hover:bg-gray-500 cursor-col-resize transition-colors" />
+          <div 
+            className="w-0.5 cursor-col-resize transition-colors" 
+            style={{ 
+              backgroundColor: `rgba(${languageColor.rgb}, 0.3)`,
+              boxShadow: `0 0 2px rgba(${languageColor.rgb}, 0.2)`
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = `rgba(${languageColor.rgb}, 0.5)`;
+              e.currentTarget.style.boxShadow = `0 0 4px rgba(${languageColor.rgb}, 0.4)`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = `rgba(${languageColor.rgb}, 0.3)`;
+              e.currentTarget.style.boxShadow = `0 0 2px rgba(${languageColor.rgb}, 0.2)`;
+            }}
+          />
           
           {/* File Explorer Panel */}
-                      <div className="w-56 bg-slate-950/95 border-l border-slate-800/50 overflow-hidden flex flex-col">
+          <div 
+            className="w-56 bg-slate-950/95 overflow-hidden flex flex-col" 
+            style={{ 
+              borderLeft: `1px solid rgba(${languageColor.rgb}, 0.2)`,
+              boxShadow: `inset 1px 0 0 rgba(${languageColor.rgb}, 0.05)`
+            }}
+          >
             {/* File Explorer Header */}
-            <div className="p-3 border-b border-slate-800/50 bg-slate-900/90">
+            <div 
+              className="p-3 bg-slate-900/90" 
+              style={{ 
+                borderBottom: `1px solid rgba(${languageColor.rgb}, 0.2)`,
+                boxShadow: `0 1px 0 rgba(${languageColor.rgb}, 0.05)`
+              }}
+            >
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                   <svg className="w-4 h-4 text-cyan-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -1679,7 +1776,7 @@ function CodingPlayground() {
             </div>
             
             {/* File Tree */}
-            <div className="flex-1 overflow-y-auto p-2">
+            <div className={`flex-1 overflow-y-auto p-2 custom-scrollbar-${activeTab}`}>
               <FileTreeNode 
                 node={fileSystem} 
                 path="/workspace"
@@ -1713,7 +1810,13 @@ function CodingPlayground() {
             </div>
             
             {/* File Explorer Actions */}
-            <div className="p-3 border-t border-slate-800/50 bg-slate-900/90">
+            <div 
+              className="p-3 bg-slate-900/90" 
+              style={{ 
+                borderTop: `1px solid rgba(${languageColor.rgb}, 0.2)`,
+                boxShadow: `0 -1px 0 rgba(${languageColor.rgb}, 0.05)`
+              }}
+            >
               <div className="flex gap-4 justify-center">
                 <button
                   onClick={() => {
@@ -1758,36 +1861,39 @@ function CodingPlayground() {
 
       {/* Resize Handle */}
       <div
-        className="h-1 bg-gray-600 hover:bg-gray-500 cursor-row-resize transition-colors flex-shrink-0"
+        className="h-0.5 cursor-row-resize transition-colors flex-shrink-0"
         title="Drag to resize console"
+        onMouseDown={handleMouseDown}
+        style={{ 
+          backgroundColor: `rgba(${languageColor.rgb}, 0.3)`,
+          boxShadow: `0 0 2px rgba(${languageColor.rgb}, 0.2)`
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = `rgba(${languageColor.rgb}, 0.5)`;
+          e.currentTarget.style.boxShadow = `0 0 4px rgba(${languageColor.rgb}, 0.4)`;
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = `rgba(${languageColor.rgb}, 0.3)`;
+          e.currentTarget.style.boxShadow = `0 0 2px rgba(${languageColor.rgb}, 0.2)`;
+        }}
       />
 
       {/* Console Output */}
-      <div className="border-t border-slate-800/50 flex-shrink-0" style={{ height: `${consoleHeight}%`, minHeight: '200px' }}>
-        <div className="bg-slate-900/90 px-4 py-2 border-b border-slate-800/50 flex items-center justify-between">
+      <div 
+        className="flex-shrink-0" 
+        style={{ 
+          height: `${consoleHeight}%`, 
+          minHeight: '200px'
+        }}
+      >
+        <div className="bg-slate-900/90 px-4 py-2 flex items-center justify-between">
           <div className="flex items-center gap-3">
-                      <div className="flex gap-1">
-            <button
-              onClick={() => setActiveConsoleTab('terminal')}
-                className={`px-3 py-1 rounded-2xl text-xs font-normal transition-colors border-2 ${
-                activeConsoleTab === 'terminal'
-                    ? 'bg-green-900/20 border-green-400 text-green-400'
-                    : 'bg-slate-950/80 border-slate-600/50 text-gray-300 hover:border-green-400/50 hover:text-green-300'
-              }`}
-            >
-                Terminal
-            </button>
-            <button
-              onClick={() => setActiveConsoleTab('output')}
-                className={`px-3 py-1 rounded-2xl text-xs font-normal transition-colors border-2 ${
-                activeConsoleTab === 'output'
-                    ? 'bg-blue-900/20 border-blue-400 text-blue-400'
-                    : 'bg-slate-950/80 border-slate-600/50 text-gray-300 hover:border-blue-400/50 hover:text-blue-300'
-              }`}
-            >
-                Output
-            </button>
-          </div>
+            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+              <svg className="w-4 h-4" style={{ color: `rgb(${languageColor.rgb})` }} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" />
+              </svg>
+              <span style={{ color: `rgb(${languageColor.rgb})` }}>Console</span>
+            </h3>
           </div>
           
           <div className="flex-1 flex justify-center">
@@ -1805,80 +1911,74 @@ function CodingPlayground() {
           </div>
           
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400">Height: {consoleHeight}%</span>
             <button
               onClick={() => {
                 setTerminalOutput('');
                 setTerminalHistory([]);
+                setOutput('');
               }}
               className="px-3 py-1 bg-slate-950/80 border-2 border-red-400/50 hover:border-red-400 text-red-400 hover:text-red-300 rounded-3xl text-xs font-medium transition-colors shadow-[0_0_10px_rgba(248,113,113,0.3)]"
             >
-              Clear Terminal
+              Clear Console
             </button>
           </div>
         </div>
-        <div className={`p-4 text-sm overflow-y-auto font-normal ${
-          activeConsoleTab === 'output' 
-            ? 'bg-slate-900 text-blue-400' 
-            : 'bg-black text-green-400'
-        }`} style={{ 
+        <div className={`p-4 text-sm overflow-y-auto font-normal custom-scrollbar-${activeTab} bg-black text-green-400`} style={{ 
           height: 'calc(100% - 40px)',
-          fontFamily: "'Fira Code', 'JetBrains Mono', 'Source Code Pro', 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace",
-          fontWeight: 'normal'
+          fontFamily: "'Noto Sans Mono', 'JetBrains Mono', 'SF Mono', 'Source Code Pro', 'Menlo', 'Monaco', 'Consolas', monospace",
+          fontWeight: '300', // Light font weight for console
+          letterSpacing: '0.1px' // Tighter spacing for Noto Sans Mono
         }}>
-          {activeConsoleTab === 'output' ? (
-            output ? (
-              <div className="whitespace-pre-wrap text-blue-300">{output}</div>
-            ) : (
-              <div className="text-blue-500/70">
-                Select a language to initialize the environment, then click "Run" to execute code.
-              </div>
-            )
-                    ) : (
-            <div className="h-full flex flex-col">
-              {/* Terminal Output */}
-              <div className="flex-1 overflow-y-auto">
-                {/* Welcome message when no output */}
-                {!terminalOutput && terminalHistory.length === 0 && (
-                  <div className="text-gray-500 font-mono text-sm leading-relaxed mb-4">
-                    <div>Welcome to the Algo Visualizer Terminal! 🚀</div>
-                    <div>Type "help" for available commands.</div>
-                  </div>
-                )}
-                
-                {/* Program execution output */}
-                {terminalOutput && (
-                  <div className="whitespace-pre-wrap text-white font-mono text-sm leading-relaxed mb-4">
-                    {terminalOutput}
-                  </div>
-                )}
-                
-                {/* Command history */}
-                {terminalHistory.map((line, index) => (
-                  <div key={index} className={`whitespace-pre-wrap font-mono text-sm leading-relaxed ${
-                    line.startsWith('$ ') ? 'text-green-400' : 'text-white'
-                  }`}>
-                    {line}
-                  </div>
-                ))}
-              </div>
+          <div className="h-full flex flex-col">
+            {/* Console Output Area */}
+            <div className="flex-1 overflow-y-auto">
+              {/* Welcome message when no output */}
+              {!output && !terminalOutput && terminalHistory.length === 0 && (
+                <div className="text-gray-500 font-mono text-sm leading-relaxed mb-4">
+                  <div>Welcome to the Algo Visualizer Console! 🚀</div>
+                  <div>Type "help" for available commands or click "Run" to execute code.</div>
+                </div>
+              )}
               
-              {/* Terminal Input */}
-              <form onSubmit={handleTerminalSubmit} className="flex items-center mt-2">
-                <span className="text-purple-400 font-mono text-sm mr-2">$</span>
-                <input
-                  type="text"
-                  value={terminalInput}
-                  onChange={(e) => setTerminalInput(e.target.value)}
-                  className="flex-1 bg-transparent text-white font-mono text-sm outline-none border-none"
-                  placeholder="Type a command..."
-                  style={{ color: 'white' }}
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-              </form>
+              {/* Language initialization/execution output */}
+              {output && (
+                <div className="whitespace-pre-wrap text-blue-300 font-mono text-sm leading-relaxed mb-4">
+                  {output}
+                </div>
+              )}
+              
+              {/* Program execution output */}
+              {terminalOutput && (
+                <div className="whitespace-pre-wrap text-white font-mono text-sm leading-relaxed mb-4">
+                  {terminalOutput}
+                </div>
+              )}
+              
+              {/* Command history */}
+              {terminalHistory.map((line, index) => (
+                <div key={index} className={`whitespace-pre-wrap font-mono text-sm leading-relaxed ${
+                  line.startsWith('$ ') ? 'text-green-400' : 'text-white'
+                }`}>
+                  {line}
+                </div>
+              ))}
             </div>
-          )}
+            
+            {/* Terminal Input */}
+            <form onSubmit={handleTerminalSubmit} className="flex items-center mt-2">
+              <span className="text-purple-400 font-mono text-sm mr-2">$</span>
+              <input
+                type="text"
+                value={terminalInput}
+                onChange={(e) => setTerminalInput(e.target.value)}
+                className="flex-1 bg-transparent text-white font-mono text-sm outline-none border-none"
+                placeholder="Type a command..."
+                style={{ color: 'white' }}
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </form>
+          </div>
         </div>
       </div>
     </div>
