@@ -575,6 +575,8 @@ function FileTreeNode({
   onToggleFolder, 
   onSelectFile, 
   currentFile, 
+  selectedFiles,
+  onToggleSelection,
   level = 0 
 }: {
   node: FileSystemNode;
@@ -583,10 +585,13 @@ function FileTreeNode({
   onToggleFolder: (path: string) => void;
   onSelectFile: (path: string) => void;
   currentFile: string;
+  selectedFiles: Set<string>;
+  onToggleSelection: (path: string) => void;
   level?: number;
 }) {
   const isExpanded = expandedFolders.has(path);
-  const isSelected = currentFile === path;
+  const isCurrentFile = currentFile === path;
+  const isSelected = selectedFiles.has(path);
   
   const getFileIcon = (fileName: string, isFolder: boolean) => {
     if (isFolder) {
@@ -737,13 +742,18 @@ function FileTreeNode({
     <div>
       <div
         className={`inline-flex items-center gap-1 py-0.5 pl-2 pr-1 rounded cursor-pointer transition-colors ${
-          isSelected 
+          isCurrentFile 
             ? 'bg-cyan-900/30 text-cyan-400' 
+            : isSelected
+            ? 'bg-red-900/30 text-red-400 border border-red-400/50'
             : 'text-gray-300 hover:bg-slate-800/50 hover:text-white'
         }`}
         style={{ marginLeft: `${level * 16 + 8}px` }}
-        onClick={() => {
-          if (node.type === 'folder') {
+        onClick={(e) => {
+          if (e.ctrlKey || e.metaKey) {
+            // Ctrl/Cmd click for selection
+            onToggleSelection(path);
+          } else if (node.type === 'folder') {
             onToggleFolder(path);
           } else {
             onSelectFile(path);
@@ -770,6 +780,8 @@ function FileTreeNode({
               onToggleFolder={onToggleFolder}
               onSelectFile={onSelectFile}
               currentFile={currentFile}
+              selectedFiles={selectedFiles}
+              onToggleSelection={onToggleSelection}
               level={level + 1}
             />
           ))}
@@ -781,6 +793,7 @@ function FileTreeNode({
 
 function CodingPlayground() {
   const [activeTab, setActiveTab] = useState('python');
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [editorTheme, setEditorTheme] = useState('neon-dark');
   
   // Initialize file system with sample files
@@ -913,6 +926,58 @@ function CodingPlayground() {
       }
       return newFileSystem;
     });
+  };
+
+  const deleteSelectedFiles = () => {
+    if (selectedFiles.size === 0) {
+      alert('Please select files or folders to delete by holding Ctrl/Cmd and clicking on them.');
+      return;
+    }
+
+    const selectedArray = Array.from(selectedFiles);
+    const confirmMessage = selectedArray.length === 1 
+      ? `Are you sure you want to delete "${selectedArray[0].split('/').pop()}"?`
+      : `Are you sure you want to delete ${selectedArray.length} selected items?`;
+    
+    if (!confirm(confirmMessage)) return;
+
+    setFileSystem(prev => {
+      let newFileSystem = { ...prev };
+      
+      // Sort paths by depth (deeper first) to avoid deleting parent before children
+      const sortedPaths = selectedArray.sort((a, b) => b.split('/').length - a.split('/').length);
+      
+      sortedPaths.forEach(selectedPath => {
+        // Normalize path - remove /workspace prefix if present
+        const normalizedPath = selectedPath.replace(/^\/workspace\/?/, '');
+        if (!normalizedPath) return; // Don't delete root
+        
+        const pathParts = normalizedPath.split('/').filter(Boolean);
+        
+        // Find parent folder
+        let current = newFileSystem;
+        for (let i = 0; i < pathParts.length - 1; i++) {
+          if (!current.children) return;
+          const childFolder = current.children.find(c => c.name === pathParts[i] && c.type === 'folder');
+          if (!childFolder) return;
+          current = childFolder;
+        }
+        
+        // Remove the target file/folder
+        if (current.children && pathParts.length > 0) {
+          const targetName = pathParts[pathParts.length - 1];
+          current.children = current.children.filter(child => child.name !== targetName);
+        }
+      });
+      
+      return newFileSystem;
+    });
+    
+    // Clear selections and update current file if it was deleted
+    setSelectedFiles(new Set());
+    if (selectedFiles.has(currentFile)) {
+      setCurrentFile('/workspace/main.py');
+    }
   };
 
   // Initialize current file content
@@ -1592,6 +1657,19 @@ function CodingPlayground() {
                   </svg>
                   Explorer
                 </h3>
+                <button
+                  onClick={deleteSelectedFiles}
+                  className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 ${
+                    selectedFiles.size > 0 
+                      ? 'bg-red-500 text-white hover:bg-red-400 shadow-[0_0_10px_rgba(239,68,68,0.4)] hover:shadow-[0_0_15px_rgba(239,68,68,0.6)]' 
+                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-300'
+                  }`}
+                  title={selectedFiles.size > 0 ? `Delete ${selectedFiles.size} selected item${selectedFiles.size > 1 ? 's' : ''}` : 'Select files to delete'}
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                  </svg>
+                </button>
               </div>
               
               {/* Current Directory */}
@@ -1619,6 +1697,18 @@ function CodingPlayground() {
                 }}
                 onSelectFile={handleFileSelect}
                 currentFile={currentFile}
+                selectedFiles={selectedFiles}
+                onToggleSelection={(path) => {
+                  setSelectedFiles(prev => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(path)) {
+                      newSet.delete(path);
+                    } else {
+                      newSet.add(path);
+                    }
+                    return newSet;
+                  });
+                }}
               />
             </div>
             
