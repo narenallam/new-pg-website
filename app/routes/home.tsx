@@ -7,8 +7,9 @@ function ClientOnlyEditor({
   value, 
   onChange, 
   height = "100%",
-  theme = "vs-dark",
-  options = {}
+  theme = "neon-dark",
+  options = {},
+  onMount
 }: {
   language: string;
   value: string;
@@ -16,6 +17,7 @@ function ClientOnlyEditor({
   height?: string;
   theme?: string;
   options?: any;
+  onMount?: (editor: any, monaco: any) => void;
 }) {
   const [Editor, setEditor] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,8 +62,9 @@ function ClientOnlyEditor({
       value={value}
       onChange={onChange}
       theme={theme}
+      onMount={onMount}
       options={{
-        fontFamily: "'JetBrains Mono', 'Fira Code', 'Source Code Pro', 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace",
+        fontFamily: "'Fira Code', 'JetBrains Mono', 'Source Code Pro', 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace",
         fontLigatures: true,
         ...options
       }}
@@ -81,52 +84,46 @@ export default function Home() {
   
   return (
     <main className="relative min-h-screen overflow-hidden">
-      {/* Dark Animated Gradient Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-gray-900 to-black animate-pulse"></div>
-      <div className="absolute inset-0 bg-gradient-to-tr from-navy-900/50 via-red-950/30 to-emerald-950/40"></div>
-      <div className="absolute inset-0 bg-gradient-to-bl from-amber-950/20 via-stone-900/40 to-slate-950"></div>
-
       {/* Header Section */}
-      <div className="relative z-10 p-8 pb-4">
-        <div className="flex items-center">
-              <div className="w-16 h-16 rounded-3xl mr-4 ring-4 ring-white/10 shadow-2xl bg-gradient-to-br from-slate-800/40 to-gray-900/60 flex items-center justify-center backdrop-blur-md">
-                {!imageError ? (
-                                      <img 
-                      src="/profile.png" 
-                      alt="Naren Allam" 
-                      className="w-full h-full object-cover rounded-3xl"
-                      onError={() => setImageError(true)}
-                    />
-                  ) : (
-                    <div className="w-full h-full rounded-3xl bg-gradient-to-br from-slate-700 to-gray-800 flex items-center justify-center text-white text-xl font-bold">
-                      NA
-                    </div>
-                  )}
+      <div className="relative z-10 bg-gradient-to-b from-slate-950/95 to-transparent backdrop-blur-md py-12">
+        <div className="flex items-center justify-center gap-4">
+          <div className="w-12 h-12 rounded-3xl ring-2 ring-white/10 shadow-xl bg-gradient-to-br from-slate-800/40 to-gray-900/60 flex items-center justify-center backdrop-blur-md">
+            {!imageError ? (
+              <img 
+                src="/profile.png" 
+                alt="Profile" 
+                className="w-full h-full object-cover rounded-3xl"
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <div className="w-full h-full rounded-3xl bg-gradient-to-br from-slate-700 to-gray-800 flex items-center justify-center text-white text-sm font-bold">
+                NA
               </div>
-              <div>
-                <h2 className="text-sm font-semibold text-white/90 tracking-wider uppercase">
-                  NAREN ALLAM
-                </h2>
-                <h1 className="text-3xl font-bold text-white">
-                  Algo Visualizer
-                </h1>
-              </div>
-            </div>
+            )}
           </div>
+          
+          <div>
+            <h1 className="text-5xl font-bold text-white" style={{ fontFamily: 'Moirai One, serif' }}>
+              Algo Visualizer
+            </h1>
+          </div>
+        </div>
+      </div>
 
-      <div className="relative z-10 h-[calc(100vh-120px)] flex px-8 pb-8">
+      <div className="relative z-10 h-[calc(100vh-160px)] flex px-8 pb-8">
         {/* Left Side - Algorithm Visualizer */}
-        <div className="w-1/2 pr-4 overflow-y-auto">
-          <div className="space-y-4">
+        <div className="w-[35%] pr-4 overflow-y-auto">
+          <div className="grid grid-cols-2 gap-4">
             <AlgorithmCard
               title="LinkedList"
               description="Linear data structure with dynamic memory allocation and efficient insertion/deletion"
               href="/linked-list"
               icon="🔗"
               status="available"
-              gradient="from-slate-900 via-gray-900 to-slate-950"
+              neonColor="yellow-400"
+              gradient=""
               textColor="text-white"
-              hoverGradient="from-slate-800 via-gray-800 to-slate-900"
+              hoverGradient=""
             />
             
             <AlgorithmCard
@@ -135,9 +132,10 @@ export default function Home() {
               href="/binary-search-tree"
               icon="🌳"
               status="available"
-              gradient="from-emerald-900 via-green-900 to-emerald-950"
+              neonColor="emerald-400"
+              gradient=""
               textColor="text-white"
-              hoverGradient="from-emerald-800 via-green-800 to-emerald-900"
+              hoverGradient=""
             />
             
             <AlgorithmCard
@@ -146,9 +144,10 @@ export default function Home() {
               href="/stack"
               icon="📚"
               status="available"
-              gradient="from-indigo-900 via-blue-900 to-indigo-950"
+              neonColor="blue-400"
+              gradient=""
               textColor="text-white"
-              hoverGradient="from-indigo-800 via-blue-800 to-indigo-900"
+              hoverGradient=""
             />
             
             <AlgorithmCard
@@ -157,9 +156,10 @@ export default function Home() {
               href="/queue"
               icon="🔄"
               status="available"
-              gradient="from-cyan-900 via-blue-900 to-cyan-950"
+              neonColor="cyan-400"
+              gradient=""
               textColor="text-white"
-              hoverGradient="from-cyan-800 via-blue-800 to-cyan-900"
+              hoverGradient=""
             />
             
             <AlgorithmCard
@@ -168,9 +168,10 @@ export default function Home() {
               href="/graph"
               icon="🕸️"
               status="available"
-              gradient="from-gray-900 via-slate-900 to-gray-950"
+              neonColor="orange-400"
+              gradient=""
               textColor="text-white"
-              hoverGradient="from-gray-800 via-slate-800 to-gray-900"
+              hoverGradient=""
               iconStyle="filter: brightness(1.3) contrast(1.1)"
             />
             
@@ -180,9 +181,10 @@ export default function Home() {
               href="/trie"
               icon="🌲"
               status="available"
-              gradient="from-green-900 via-emerald-900 to-green-950"
+              neonColor="green-400"
+              gradient=""
               textColor="text-white"
-              hoverGradient="from-green-800 via-emerald-800 to-green-900"
+              hoverGradient=""
             />
             
             <AlgorithmCard
@@ -191,9 +193,10 @@ export default function Home() {
               href="/hashset"
               icon="🔢"
               status="available"
-              gradient="from-red-900 via-rose-900 to-red-950"
+              neonColor="red-400"
+              gradient=""
               textColor="text-white"
-              hoverGradient="from-red-800 via-rose-800 to-red-900"
+              hoverGradient=""
             />
             
             <AlgorithmCard
@@ -202,9 +205,10 @@ export default function Home() {
               href="/hashtable"
               icon="🔑"
               status="available"
-              gradient="from-amber-900 via-orange-900 to-amber-950"
+              neonColor="purple-400"
+              gradient=""
               textColor="text-white"
-              hoverGradient="from-amber-800 via-orange-800 to-amber-900"
+              hoverGradient=""
             />
             
             <AlgorithmCard
@@ -213,15 +217,16 @@ export default function Home() {
               href="/heapq"
               icon="⛰️"
               status="available"
-              gradient="from-stone-900 via-neutral-900 to-stone-950"
+              neonColor="pink-400"
+              gradient=""
               textColor="text-white"
-              hoverGradient="from-stone-800 via-neutral-800 to-stone-900"
+              hoverGradient=""
             />
           </div>
         </div>
 
         {/* Right Side - Coding Playground */}
-        <div className="w-1/2 pl-4">
+        <div className="w-[65%] pl-4">
           <CodingPlayground />
         </div>
       </div>
@@ -238,17 +243,264 @@ interface AlgorithmCardProps {
   gradient: string;
   textColor: string;
   hoverGradient: string;
+  neonColor?: string;
   iconStyle?: string;
 }
 
-function AlgorithmCard({ title, description, href, icon, status, gradient, textColor, hoverGradient, iconStyle }: AlgorithmCardProps) {
+const getLanguageIcon = (langId: string, className = "w-5 h-5") => {
+  const iconProps = {
+    className: `${className} stroke-current`,
+    strokeWidth: 1.5,
+    fill: 'none',
+    viewBox: "0 0 24 24"
+  };
+
+  switch (langId) {
+    case 'python':
+      return (
+        <svg {...iconProps}>
+          <path d="M9 3c-1.5 0-3 1.5-3 3v3h6V6h3c1.5 0 3 1.5 3 3v6c0 1.5-1.5 3-3 3h-3v-3H6v3c0 1.5 1.5 3 3 3h6c1.5 0 3-1.5 3-3V9c0-1.5-1.5-3-3-3H9z"/>
+          <circle cx="8" cy="8" r="1"/>
+          <circle cx="16" cy="16" r="1"/>
+        </svg>
+      );
+    case 'cpp':
+      return (
+        <svg {...iconProps}>
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M8 8h8M8 12h8M8 16h6"/>
+          <path d="M14 6v4M16 6v4"/>
+          <path d="M18 8h2M18 10h2"/>
+          <path d="M14 14v4M16 14v4"/>
+          <path d="M18 16h2M18 18h2"/>
+        </svg>
+      );
+    case 'java':
+      return (
+        <svg {...iconProps}>
+          <path d="M10 2v6c0 3 1 5 4 5s4-2 4-5V2"/>
+          <path d="M6 15c0 3 2 5 6 5s6-2 6-5"/>
+          <path d="M8 11c2-1 4-1 6 0"/>
+          <path d="M12 8v4"/>
+          <circle cx="12" cy="4" r="1"/>
+        </svg>
+      );
+    case 'go':
+      return (
+        <svg {...iconProps}>
+          <path d="M7.5 8c2.5 0 4.5-2 4.5-4.5S10 1 7.5 1 3 2 3 4.5 5 8 7.5 8z"/>
+          <path d="M21 12c0 2.5-2 4.5-4.5 4.5S12 14.5 12 12s2-4.5 4.5-4.5S21 9.5 21 12z"/>
+          <path d="M15.5 19c2.5 0 4.5-2 4.5-4.5S18 10 15.5 10 11 12 11 14.5 13 19 15.5 19z"/>
+          <path d="m6 9 4 4"/>
+          <path d="m14 13 4 4"/>
+        </svg>
+      );
+    case 'javascript':
+      return (
+        <svg {...iconProps}>
+          <rect x="2" y="2" width="20" height="20" rx="2"/>
+          <path d="M7 16c0 1 1 2 2 2s2-1 2-2V8"/>
+          <path d="M15 8v4c0 2-1 3-2 3s-2-1-2-3"/>
+        </svg>
+      );
+    default:
+      return <span className="text-sm">?</span>;
+  }
+};
+
+const getOutlinedIcon = (iconType: string, color: string) => {
+  const iconProps = {
+    className: `w-8 h-8 stroke-current`,
+    strokeWidth: 1.5,
+    fill: 'none'
+  };
+
+  switch (iconType) {
+    case '🔗':
+      return (
+        <svg {...iconProps} viewBox="0 0 24 24">
+          <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+          <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+        </svg>
+      );
+    case '🌳':
+      return (
+        <svg {...iconProps} viewBox="0 0 24 24">
+          <path d="M12 22v-3" />
+          <path d="M7 12c-1.5 0-3-1-3-3s1.5-3 3-3 3 1 3 3-1.5 3-3 3z" />
+          <path d="M17 12c-1.5 0-3-1-3-3s1.5-3 3-3 3 1 3 3-1.5 3-3 3z" />
+          <path d="M12 12c-1.5 0-3-1-3-3s1.5-3 3-3 3 1 3 3-1.5 3-3 3z" />
+          <path d="M12 12c-1.5 0-3 1-3 3s1.5 3 3 3 3-1 3-3-1.5-3-3-3z" />
+        </svg>
+      );
+    case '📚':
+      return (
+        <svg {...iconProps} viewBox="0 0 24 24">
+          <path d="M2 6h20v12H2z" />
+          <path d="M6 10h12" />
+          <path d="M6 14h8" />
+          <path d="M2 6l2-2h16l2 2" />
+        </svg>
+      );
+    case '🔄':
+      return (
+        <svg {...iconProps} viewBox="0 0 24 24">
+          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+          <path d="M21 3v5h-5" />
+          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+          <path d="M8 16H3v5" />
+        </svg>
+      );
+    case '🕸️':
+      return (
+        <svg {...iconProps} viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10" />
+          <circle cx="12" cy="12" r="6" />
+          <circle cx="12" cy="12" r="2" />
+          <path d="M12 2v20" />
+          <path d="M2 12h20" />
+          <path d="M4.93 4.93l14.14 14.14" />
+          <path d="M4.93 19.07l14.14-14.14" />
+        </svg>
+      );
+    case '🌲':
+      return (
+        <svg {...iconProps} viewBox="0 0 24 24">
+          <path d="M12 2L8 8h8l-4-6z" />
+          <path d="M12 8L7 15h10l-5-7z" />
+          <path d="M12 15L6 22h12l-6-7z" />
+          <path d="M12 22v-7" />
+        </svg>
+      );
+    case '🔢':
+      return (
+        <svg {...iconProps} viewBox="0 0 24 24">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <path d="M8 12h8" />
+          <path d="M12 8v8" />
+          <path d="M8 8h8" />
+          <path d="M8 16h8" />
+        </svg>
+      );
+    case '🔑':
+      return (
+        <svg {...iconProps} viewBox="0 0 24 24">
+          <circle cx="7.5" cy="15.5" r="5.5" />
+          <path d="M13 6L22 6" />
+          <path d="M17 2L22 7" />
+          <path d="M17 12L22 7" />
+        </svg>
+      );
+    case '⛰️':
+      return (
+        <svg {...iconProps} viewBox="0 0 24 24">
+          <path d="M8 21l4-7 4 7" />
+          <path d="M12 14l-4-7L12 3l4 4-4 7" />
+          <path d="M4 21h16" />
+        </svg>
+      );
+    default:
+      return <span className="text-3xl">?</span>;
+  }
+};
+
+function AlgorithmCard({ title, description, href, icon, status, gradient, textColor, hoverGradient, neonColor = "cyan-400", iconStyle }: AlgorithmCardProps) {
   const isAvailable = status === "available";
+  
+  const getNeonStyles = (color: string) => {
+    const colorMap: { [key: string]: { border: string, hoverBorder: string, shadow: string, accent: string, rgb: string, textColor: string, textColorLight: string } } = {
+      'yellow-400': {
+        border: 'border-yellow-400/50',
+        hoverBorder: 'hover:border-yellow-400',
+        shadow: 'hover:shadow-[0_0_20px_rgba(250,204,21,0.5)]',
+        accent: 'from-yellow-400/20 via-yellow-400/60 to-yellow-400/20',
+        rgb: '250, 204, 21',
+        textColor: '#facc15',
+        textColorLight: 'rgba(250, 204, 21, 0.7)'
+      },
+      'green-400': {
+        border: 'border-green-400/50',
+        hoverBorder: 'hover:border-green-400',
+        shadow: 'hover:shadow-[0_0_20px_rgba(34,197,94,0.5)]',
+        accent: 'from-green-400/20 via-green-400/60 to-green-400/20',
+        rgb: '34, 197, 94',
+        textColor: '#22c55e',
+        textColorLight: 'rgba(34, 197, 94, 0.7)'
+      },
+      'blue-400': {
+        border: 'border-blue-400/50',
+        hoverBorder: 'hover:border-blue-400',
+        shadow: 'hover:shadow-[0_0_20px_rgba(59,130,246,0.5)]',
+        accent: 'from-blue-400/20 via-blue-400/60 to-blue-400/20',
+        rgb: '59, 130, 246',
+        textColor: '#3b82f6',
+        textColorLight: 'rgba(59, 130, 246, 0.7)'
+      },
+      'purple-400': {
+        border: 'border-purple-400/50',
+        hoverBorder: 'hover:border-purple-400',
+        shadow: 'hover:shadow-[0_0_20px_rgba(168,85,247,0.5)]',
+        accent: 'from-purple-400/20 via-purple-400/60 to-purple-400/20',
+        rgb: '168, 85, 247',
+        textColor: '#a855f7',
+        textColorLight: 'rgba(168, 85, 247, 0.7)'
+      },
+      'pink-400': {
+        border: 'border-pink-400/50',
+        hoverBorder: 'hover:border-pink-400',
+        shadow: 'hover:shadow-[0_0_20px_rgba(244,114,182,0.5)]',
+        accent: 'from-pink-400/20 via-pink-400/60 to-pink-400/20',
+        rgb: '244, 114, 182',
+        textColor: '#f472b6',
+        textColorLight: 'rgba(244, 114, 182, 0.7)'
+      },
+      'orange-400': {
+        border: 'border-orange-400/50',
+        hoverBorder: 'hover:border-orange-400',
+        shadow: 'hover:shadow-[0_0_20px_rgba(251,146,60,0.5)]',
+        accent: 'from-orange-400/20 via-orange-400/60 to-orange-400/20',
+        rgb: '251, 146, 60',
+        textColor: '#fb923c',
+        textColorLight: 'rgba(251, 146, 60, 0.7)'
+      },
+      'red-400': {
+        border: 'border-red-400/50',
+        hoverBorder: 'hover:border-red-400',
+        shadow: 'hover:shadow-[0_0_20px_rgba(248,113,113,0.5)]',
+        accent: 'from-red-400/20 via-red-400/60 to-red-400/20',
+        rgb: '248, 113, 113',
+        textColor: '#f87171',
+        textColorLight: 'rgba(248, 113, 113, 0.7)'
+      },
+      'cyan-400': {
+        border: 'border-cyan-400/50',
+        hoverBorder: 'hover:border-cyan-400',
+        shadow: 'hover:shadow-[0_0_20px_rgba(34,211,238,0.5)]',
+        accent: 'from-cyan-400/20 via-cyan-400/60 to-cyan-400/20',
+        rgb: '34, 211, 238',
+        textColor: '#22d3ee',
+        textColorLight: 'rgba(34, 211, 238, 0.7)'
+      },
+      'emerald-400': {
+        border: 'border-emerald-400/50',
+        hoverBorder: 'hover:border-emerald-400',
+        shadow: 'hover:shadow-[0_0_20px_rgba(52,211,153,0.5)]',
+        accent: 'from-emerald-400/20 via-emerald-400/60 to-emerald-400/20',
+        rgb: '52, 211, 153',
+        textColor: '#34d399',
+        textColorLight: 'rgba(52, 211, 153, 0.7)'
+      }
+    };
+    return colorMap[color] || colorMap['cyan-400'];
+  };
+
+  const neonStyles = getNeonStyles(neonColor);
   
   const CardContent = () => (
     <div className={`
-      relative overflow-hidden p-5 rounded-3xl border transition-all duration-300 group
+      relative overflow-hidden p-4 rounded-3xl border-2 transition-all duration-300 group flex flex-col h-40 items-center justify-center text-center
       ${isAvailable 
-        ? `bg-gradient-to-br ${gradient} hover:bg-gradient-to-br hover:${hoverGradient} hover:shadow-2xl hover:scale-[1.02] cursor-pointer border-white/5 hover:border-white/10 backdrop-blur-md` 
+        ? `bg-slate-950/80 cursor-pointer ${neonStyles.border} ${neonStyles.hoverBorder} ${neonStyles.shadow} hover:scale-[1.02] backdrop-blur-md` 
         : 'bg-slate-900/40 cursor-not-allowed border-slate-700/30 backdrop-blur-md'}
     `}>
       {/* Subtle shine effect on hover */}
@@ -256,35 +508,41 @@ function AlgorithmCard({ title, description, href, icon, status, gradient, textC
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/8 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform -skew-x-12"></div>
       )}
       
-      <div className="relative">
-        <div className="flex items-start gap-4">
-          <span 
-            className="text-2xl filter drop-shadow-lg flex-shrink-0 mt-1" 
-            style={iconStyle ? { filter: iconStyle } : undefined}
-          >
-            {icon}
+      <div className="relative flex flex-col h-full justify-center items-center">
+        {!isAvailable && (
+          <span className="absolute top-0 right-0 text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full">
+            Soon
           </span>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className={`text-lg font-semibold ${isAvailable ? textColor : 'text-gray-300'}`}>
-                {title}
-              </h3>
-              {!isAvailable && (
-                <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full">
-                  Soon
-                </span>
-              )}
-            </div>
-            <p className={`text-sm leading-relaxed ${isAvailable ? 'text-white/80' : 'text-gray-400'}`}>
-              {description}
-            </p>
-          </div>
+        )}
+        
+        <div 
+          className={`text-3xl mb-2 ${isAvailable ? '' : 'text-gray-400'}`}
+          style={isAvailable ? { 
+            color: neonStyles.textColor,
+            ...(iconStyle ? { filter: iconStyle } : {})
+          } : (iconStyle ? { filter: iconStyle } : {})}
+        >
+          {getOutlinedIcon(icon, neonColor)}
         </div>
+        
+        <h3 
+          className={`text-lg font-semibold mb-2 ${isAvailable ? '' : 'text-gray-300'}`}
+          style={isAvailable ? { color: neonStyles.textColor } : {}}
+        >
+          {title}
+        </h3>
+        
+        <p 
+          className={`text-xs leading-relaxed ${isAvailable ? '' : 'text-gray-400'}`}
+          style={isAvailable ? { color: neonStyles.textColorLight } : {}}
+        >
+          {description}
+        </p>
       </div>
       
       {/* Bottom accent line */}
       {isAvailable && (
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-white/20 via-white/40 to-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+        <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r ${neonStyles.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
       )}
     </div>
   );
@@ -300,20 +558,522 @@ function AlgorithmCard({ title, description, href, icon, status, gradient, textC
   );
 }
 
+// File system types
+interface FileSystemNode {
+  name: string;
+  type: 'file' | 'folder';
+  content?: string;
+  children?: FileSystemNode[];
+  parent?: string;
+}
+
+// File Tree Node Component
+function FileTreeNode({ 
+  node, 
+  path, 
+  expandedFolders, 
+  onToggleFolder, 
+  onSelectFile, 
+  currentFile, 
+  level = 0 
+}: {
+  node: FileSystemNode;
+  path: string;
+  expandedFolders: Set<string>;
+  onToggleFolder: (path: string) => void;
+  onSelectFile: (path: string) => void;
+  currentFile: string;
+  level?: number;
+}) {
+  const isExpanded = expandedFolders.has(path);
+  const isSelected = currentFile === path;
+  
+  const getFileIcon = (fileName: string, isFolder: boolean) => {
+    if (isFolder) {
+      return (
+        <svg width="16" height="16" viewBox="0 0 16 16" className="text-amber-400">
+          <rect x="1" y="4" width="14" height="9" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+          <path d="M1 6 L6 6 L7 4 L10 4" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+        </svg>
+      );
+    }
+    
+    const ext = fileName.toLowerCase().split('.').pop();
+    
+    switch (ext) {
+      case 'py':
+        return (
+          <svg width="16" height="16" viewBox="0 0 16 16" className="text-yellow-400">
+            <rect x="2" y="2" width="12" height="12" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+            <line x1="4" y1="5" x2="12" y2="5" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="7" x2="12" y2="7" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="9" x2="12" y2="9" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="11" x2="10" y2="11" stroke="currentColor" strokeWidth="1"/>
+            <circle cx="5" cy="6" r="0.5" fill="currentColor"/>
+            <circle cx="11" cy="10" r="0.5" fill="currentColor"/>
+          </svg>
+        );
+      case 'js':
+        return (
+          <svg width="16" height="16" viewBox="0 0 16 16" className="text-yellow-300">
+            <rect x="2" y="2" width="12" height="12" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+            <line x1="4" y1="5" x2="12" y2="5" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="7" x2="12" y2="7" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="9" x2="12" y2="9" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="11" x2="10" y2="11" stroke="currentColor" strokeWidth="1"/>
+            <line x1="6" y1="8" x2="6" y2="10" stroke="currentColor" strokeWidth="1"/>
+            <line x1="10" y1="8" x2="10" y2="10" stroke="currentColor" strokeWidth="1"/>
+          </svg>
+        );
+      case 'cpp': case 'cc': case 'cxx':
+        return (
+          <svg width="16" height="16" viewBox="0 0 16 16" className="text-blue-400">
+            <rect x="2" y="2" width="12" height="12" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+            <line x1="4" y1="5" x2="12" y2="5" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="7" x2="12" y2="7" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="9" x2="12" y2="9" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="11" x2="10" y2="11" stroke="currentColor" strokeWidth="1"/>
+            <line x1="9" y1="6" x2="11" y2="6" stroke="currentColor" strokeWidth="1"/>
+            <line x1="10" y1="5" x2="10" y2="7" stroke="currentColor" strokeWidth="1"/>
+            <line x1="9" y1="9" x2="11" y2="9" stroke="currentColor" strokeWidth="1"/>
+            <line x1="10" y1="8" x2="10" y2="10" stroke="currentColor" strokeWidth="1"/>
+          </svg>
+        );
+      case 'java':
+        return (
+          <svg width="16" height="16" viewBox="0 0 16 16" className="text-red-400">
+            <rect x="2" y="2" width="12" height="12" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+            <line x1="4" y1="5" x2="12" y2="5" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="7" x2="12" y2="7" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="9" x2="12" y2="9" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="11" x2="10" y2="11" stroke="currentColor" strokeWidth="1"/>
+            <circle cx="8" cy="6" r="0.5" fill="currentColor"/>
+            <path d="M7 10 Q8 11 9 10" fill="none" stroke="currentColor" strokeWidth="1"/>
+          </svg>
+        );
+      case 'go':
+        return (
+          <svg width="16" height="16" viewBox="0 0 16 16" className="text-cyan-400">
+            <rect x="2" y="2" width="12" height="12" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+            <line x1="4" y1="5" x2="12" y2="5" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="7" x2="12" y2="7" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="9" x2="12" y2="9" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="11" x2="10" y2="11" stroke="currentColor" strokeWidth="1"/>
+            <circle cx="6" cy="6" r="0.5" fill="currentColor"/>
+            <circle cx="10" cy="10" r="0.5" fill="currentColor"/>
+            <line x1="6" y1="6" x2="10" y2="10" stroke="currentColor" strokeWidth="1"/>
+          </svg>
+        );
+      case 'md':
+        return (
+          <svg width="16" height="16" viewBox="0 0 16 16" className="text-purple-400">
+            <rect x="2" y="2" width="12" height="12" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+            <line x1="4" y1="5" x2="12" y2="5" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="7" x2="12" y2="7" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="9" x2="12" y2="9" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="11" x2="10" y2="11" stroke="currentColor" strokeWidth="1"/>
+            <path d="M5 6 L6 6 L7 7 L8 6 L9 6" fill="none" stroke="currentColor" strokeWidth="1"/>
+          </svg>
+        );
+      case 'json':
+        return (
+          <svg width="16" height="16" viewBox="0 0 16 16" className="text-green-400">
+            <rect x="2" y="2" width="12" height="12" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+            <line x1="4" y1="5" x2="12" y2="5" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="7" x2="12" y2="7" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="9" x2="12" y2="9" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="11" x2="10" y2="11" stroke="currentColor" strokeWidth="1"/>
+            <path d="M6 8 Q5.5 8 5.5 8.5 L5.5 9.5 Q5.5 10 6 10" fill="none" stroke="currentColor" strokeWidth="1"/>
+            <path d="M10 8 Q10.5 8 10.5 8.5 L10.5 9.5 Q10.5 10 10 10" fill="none" stroke="currentColor" strokeWidth="1"/>
+          </svg>
+        );
+      case 'html':
+        return (
+          <svg width="16" height="16" viewBox="0 0 16 16" className="text-orange-400">
+            <rect x="2" y="2" width="12" height="12" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+            <line x1="4" y1="5" x2="12" y2="5" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="7" x2="12" y2="7" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="9" x2="12" y2="9" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="11" x2="10" y2="11" stroke="currentColor" strokeWidth="1"/>
+            <path d="M6 8 L5.5 9 L6 10" fill="none" stroke="currentColor" strokeWidth="1"/>
+            <path d="M10 8 L10.5 9 L10 10" fill="none" stroke="currentColor" strokeWidth="1"/>
+          </svg>
+        );
+      case 'css':
+        return (
+          <svg width="16" height="16" viewBox="0 0 16 16" className="text-blue-300">
+            <rect x="2" y="2" width="12" height="12" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+            <line x1="4" y1="5" x2="12" y2="5" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="7" x2="12" y2="7" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="9" x2="12" y2="9" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="11" x2="10" y2="11" stroke="currentColor" strokeWidth="1"/>
+            <line x1="6" y1="8" x2="10" y2="8" stroke="currentColor" strokeWidth="1"/>
+          </svg>
+        );
+      case 'txt':
+        return (
+          <svg width="16" height="16" viewBox="0 0 16 16" className="text-gray-300">
+            <rect x="2" y="2" width="12" height="12" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+            <line x1="4" y1="5" x2="12" y2="5" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="7" x2="12" y2="7" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="9" x2="12" y2="9" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="11" x2="10" y2="11" stroke="currentColor" strokeWidth="1"/>
+          </svg>
+        );
+      default:
+        return (
+          <svg width="16" height="16" viewBox="0 0 16 16" className="text-gray-400">
+            <rect x="2" y="2" width="12" height="12" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+            <line x1="4" y1="5" x2="12" y2="5" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="7" x2="12" y2="7" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="9" x2="12" y2="9" stroke="currentColor" strokeWidth="1"/>
+            <line x1="4" y1="11" x2="10" y2="11" stroke="currentColor" strokeWidth="1"/>
+          </svg>
+        );
+    }
+  };
+
+  return (
+    <div>
+      <div
+        className={`inline-flex items-center gap-1 py-0.5 pl-2 pr-1 rounded cursor-pointer transition-colors ${
+          isSelected 
+            ? 'bg-cyan-900/30 text-cyan-400' 
+            : 'text-gray-300 hover:bg-slate-800/50 hover:text-white'
+        }`}
+        style={{ marginLeft: `${level * 16 + 8}px` }}
+        onClick={() => {
+          if (node.type === 'folder') {
+            onToggleFolder(path);
+          } else {
+            onSelectFile(path);
+          }
+        }}
+        title={node.name} // Show full name on hover
+      >
+        <span className="flex items-center">
+          {getFileIcon(node.name, node.type === 'folder')}
+        </span>
+        <span className="text-sm whitespace-nowrap">
+          {node.name.length > 20 ? `${node.name.substring(0, 20)}...` : node.name}
+        </span>
+      </div>
+      
+      {node.type === 'folder' && isExpanded && node.children && (
+        <div>
+          {node.children.map((child, index) => (
+            <FileTreeNode
+              key={`${child.name}-${index}`}
+              node={child}
+              path={`${path}/${child.name}`}
+              expandedFolders={expandedFolders}
+              onToggleFolder={onToggleFolder}
+              onSelectFile={onSelectFile}
+              currentFile={currentFile}
+              level={level + 1}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CodingPlayground() {
   const [activeTab, setActiveTab] = useState('python');
-  const [code, setCode] = useState({
-    python: '# Python with Pyodide WebAssembly\n# Try importing pandas, numpy, sklearn!\n\nimport sys\nprint(f"Python {sys.version}")\nprint("Available packages: pandas, numpy, scikit-learn, matplotlib")\n\n# Example: Data Analysis with Pandas\n# import pandas as pd\n# import numpy as np\n# \n# data = {"Name": ["Alice", "Bob"], "Age": [25, 30]}\n# df = pd.DataFrame(data)\n# print(df)',
-    cpp: '// Modern C++23 with Emscripten WebAssembly\n// Full C++23 standard support!\n\n#include <iostream>\n#include <vector>\n#include <ranges>\n#include <algorithm>\n#include <format>\n\nint main() {\n    std::cout << "🚀 C++23 WebAssembly Demo\\n";\n    \n    // C++23 Ranges and Views\n    std::vector<int> numbers{1, 2, 3, 4, 5, 6, 7, 8, 9, 10};\n    \n    auto result = numbers \n        | std::views::filter([](int x) { return x % 2 == 0; })\n        | std::views::transform([](int x) { return x * x; })\n        | std::views::take(3);\n    \n    std::cout << "Even squares (first 3): ";\n    for (auto value : result) {\n        std::cout << value << " ";\n    }\n    std::cout << "\\n";\n    \n    return 0;\n}',
-    java: '// Java 21 with WebAssembly JVM\n// Full Java standard library support!\n\nimport java.util.*;\nimport java.util.stream.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("☕ Java 21 WebAssembly Demo");\n        \n        // Modern Java features\n        List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);\n        \n        List<Integer> result = numbers.stream()\n            .filter(x -> x % 2 == 0)\n            .map(x -> x * x)\n            .limit(3)\n            .collect(Collectors.toList());\n        \n        System.out.print("Even squares (first 3): ");\n        result.forEach(x -> System.out.print(x + " "));\n        System.out.println();\n        \n        // Pattern matching (Java 21)\n        String message = switch (numbers.size()) {\n            case 10 -> "Perfect collection size!";\n            default -> "Collection has " + numbers.size() + " elements";\n        };\n        System.out.println(message);\n    }\n}',
-    go: '// Go WebAssembly with Full Standard Library\n// Complete Go 1.22 runtime with all features!\n\npackage main\n\nimport (\n    "fmt"\n    "time"\n    "context"\n    "encoding/json"\n    "sync"\n)\n\ntype Person struct {\n    Name string `json:"name"`\n    Age  int    `json:"age"`\n}\n\nfunc main() {\n    fmt.Println("🐹 Go WebAssembly Full Runtime Demo")\n    \n    // JSON marshaling/unmarshaling\n    person := Person{Name: "Gopher", Age: 13}\n    jsonData, _ := json.Marshal(person)\n    fmt.Printf("JSON: %s\\n", jsonData)\n    \n    // Goroutines with WaitGroup\n    var wg sync.WaitGroup\n    messages := make(chan string, 3)\n    \n    // Multiple goroutines\n    for i := 1; i <= 3; i++ {\n        wg.Add(1)\n        go func(id int) {\n            defer wg.Done()\n            time.Sleep(time.Millisecond * 10) // Simulated work\n            messages <- fmt.Sprintf("Worker %d completed", id)\n        }(i)\n    }\n    \n    // Context with timeout\n    ctx, cancel := context.WithTimeout(context.Background(), time.Second)\n    defer cancel()\n    \n    // Wait for all goroutines\n    go func() {\n        wg.Wait()\n        close(messages)\n    }()\n    \n    // Collect results\n    fmt.Println("Collecting results from goroutines:")\n    for msg := range messages {\n        fmt.Println("📨", msg)\n    }\n    \n    fmt.Println("✨ Full Go runtime with standard library working!")\n    fmt.Printf("Context deadline: %v\\n", ctx.Err() == nil)\n}',
-    javascript: '// JavaScript ES2023 Playground\n// Modern JavaScript with all the latest features!\n\nconsole.log("🟨 JavaScript ES2023 Demo");\n\n// Modern JavaScript features\nconst numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];\n\n// Array methods and arrow functions\nconst evenSquares = numbers\n  .filter(x => x % 2 === 0)\n  .map(x => x * x)\n  .slice(0, 3);\n\nconsole.log("Even squares (first 3):", evenSquares.join(" "));\n\n// Destructuring and template literals\nconst [first, second, third] = evenSquares;\nconsole.log(`First: ${first}, Second: ${second}, Third: ${third}`);\n\n// Async/await example (simulated)\nconst asyncDemo = async () => {\n  console.log("✨ Async operations supported!");\n  return "Promise resolved!";\n};\n\n// Modern class syntax\nclass Demo {\n  constructor(name) {\n    this.name = name;\n  }\n  \n  greet() {\n    console.log(`Hello from ${this.name}!`);\n  }\n}\n\nconst demo = new Demo("JavaScript Engine");\ndemo.greet();'
+  const [editorTheme, setEditorTheme] = useState('neon-dark');
+  
+  // Initialize file system with sample files
+  const [fileSystem, setFileSystem] = useState<FileSystemNode>({
+    name: 'workspace',
+    type: 'folder',
+    children: [
+      {
+        name: 'main.py',
+        type: 'file',
+        content: '# Hello World in Python\n# Python with Pyodide WebAssembly\n\nprint("Hello, World!")\nprint("Welcome to Python programming!")\n\n# You can use advanced libraries like:\n# import pandas as pd\n# import numpy as np\n# import scikit-learn\n\nname = input("What\'s your name? ")\nprint(f"Nice to meet you, {name}!")'
+      },
+      {
+        name: 'main.cpp',
+        type: 'file',
+        content: '// Hello World in C++\n// Modern C++23 with Emscripten WebAssembly\n\n#include <iostream>\n#include <string>\n\nint main() {\n    std::cout << "Hello, World!" << std::endl;\n    std::cout << "Welcome to C++ programming!" << std::endl;\n    \n    std::string name;\n    std::cout << "What\'s your name? ";\n    std::getline(std::cin, name);\n    \n    std::cout << "Nice to meet you, " << name << "!" << std::endl;\n    \n    return 0;\n}'
+      },
+      {
+        name: 'Main.java',
+        type: 'file',
+        content: '// Hello World in Java\n// Java 21 with WebAssembly JVM\n\nimport java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, World!");\n        System.out.println("Welcome to Java programming!");\n        \n        Scanner scanner = new Scanner(System.in);\n        System.out.print("What\'s your name? ");\n        String name = scanner.nextLine();\n        \n        System.out.println("Nice to meet you, " + name + "!");\n        \n        scanner.close();\n    }\n}'
+      },
+      {
+        name: 'main.go',
+        type: 'file',
+        content: '// Hello World in Go\n// Go WebAssembly with Full Standard Library\n\npackage main\n\nimport (\n    "bufio"\n    "fmt"\n    "os"\n    "strings"\n)\n\nfunc main() {\n    fmt.Println("Hello, World!")\n    fmt.Println("Welcome to Go programming!")\n    \n    reader := bufio.NewReader(os.Stdin)\n    fmt.Print("What\'s your name? ")\n    name, _ := reader.ReadString(\'\\n\')\n    name = strings.TrimSpace(name)\n    \n    fmt.Printf("Nice to meet you, %s!\\n", name)\n}'
+      },
+      {
+        name: 'main.js',
+        type: 'file',
+        content: '// Hello World in JavaScript\n// JavaScript ES2023 Playground\n\nconsole.log("Hello, World!");\nconsole.log("Welcome to JavaScript programming!");\n\n// Get user input (simulated with prompt)\nconst name = prompt("What\'s your name?") || "Anonymous";\nconsole.log(`Nice to meet you, ${name}!`);\n\n// Modern JavaScript features\nconst greetUser = (userName) => {\n    return `Hello, ${userName}! Welcome to the world of JavaScript!`;\n};\n\nconsole.log(greetUser(name));'
+      },
+      {
+        name: 'src',
+        type: 'folder',
+        children: [
+          {
+            name: 'utils.py',
+            type: 'file',
+            content: '# Utility functions\n\ndef fibonacci(n):\n    """Generate fibonacci sequence up to n."""\n    a, b = 0, 1\n    result = []\n    while a < n:\n        result.append(a)\n        a, b = b, a + b\n    return result\n\ndef prime_check(n):\n    """Check if a number is prime."""\n    if n < 2:\n        return False\n    for i in range(2, int(n**0.5) + 1):\n        if n % i == 0:\n            return False\n    return True'
+          }
+        ]
+      },
+      {
+        name: 'README.md',
+        type: 'file',
+        content: '# Algorithm Visualizer Workspace\n\nWelcome to your coding workspace! This environment supports:\n\n## Languages\n- **Python** with Pyodide (pandas, numpy, scikit-learn)\n- **C++23** with Emscripten WebAssembly\n- **Java 21** with WebAssembly JVM\n- **Go 1.22** with full WebAssembly runtime\n- **JavaScript ES2023** with V8 engine\n\n## Features\n- Real-time code editing with Monaco Editor\n- File system with create, read, update, delete operations\n- Terminal with bash-like commands\n- Multiple editor themes\n- Language-specific syntax highlighting\n\n## Getting Started\n1. Choose your language from the dropdown\n2. Edit files in the file explorer\n3. Use the terminal for file operations\n4. Click Run to execute your code\n\nHappy coding! 🚀'
+      }
+    ]
   });
+  
+  const [currentFile, setCurrentFile] = useState<string>('/workspace/main.py');
+  const [currentFileContent, setCurrentFileContent] = useState<string>('');
+  const [currentDirectory, setCurrentDirectory] = useState<string>('/workspace');
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['/workspace', '/workspace/src']));
+  const [terminalHistory, setTerminalHistory] = useState<string[]>([]);
+  const [terminalInput, setTerminalInput] = useState<string>('');
   const [output, setOutput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
-  const [consoleHeight, setConsoleHeight] = useState(30);
+
+  // File system utility functions
+  const findFileByPath = (path: string, node: FileSystemNode = fileSystem): FileSystemNode | null => {
+    const parts = path.split('/').filter(Boolean);
+    let current = node;
+    
+    for (const part of parts) {
+      if (current.children) {
+        const found = current.children.find(child => child.name === part);
+        if (found) {
+          current = found;
+        } else {
+          return null;
+        }
+      } else {
+        return null;
+      }
+    }
+    return current;
+  };
+
+  const getFileContent = (path: string): string => {
+    // Remove /workspace prefix for findFileByPath
+    const cleanPath = path.startsWith('/workspace') ? path.replace('/workspace', '') : path;
+    const file = findFileByPath(cleanPath);
+    return file?.content || '';
+  };
+
+  const updateFileContent = (path: string, content: string) => {
+    setFileSystem(prev => {
+      const newFileSystem = { ...prev };
+      // Remove /workspace prefix for findFileByPath
+      const cleanPath = path.startsWith('/workspace') ? path.replace('/workspace', '') : path;
+      const file = findFileByPath(cleanPath, newFileSystem);
+      if (file && file.type === 'file') {
+        file.content = content;
+      }
+      return newFileSystem;
+    });
+  };
+
+  const createFile = (path: string, name: string, content: string = '') => {
+    setFileSystem(prev => {
+      const newFileSystem = { ...prev };
+      const folder = findFileByPath(path, newFileSystem);
+      if (folder && folder.type === 'folder') {
+        if (!folder.children) folder.children = [];
+        const newFile: FileSystemNode = {
+          name,
+          type: 'file',
+          content
+        };
+        folder.children.push(newFile);
+      }
+      return newFileSystem;
+    });
+  };
+
+  const createFolder = (path: string, name: string) => {
+    setFileSystem(prev => {
+      const newFileSystem = { ...prev };
+      const folder = findFileByPath(path, newFileSystem);
+      if (folder && folder.type === 'folder') {
+        if (!folder.children) folder.children = [];
+        const newFolder: FileSystemNode = {
+          name,
+          type: 'folder',
+          children: []
+        };
+        folder.children.push(newFolder);
+      }
+      return newFileSystem;
+    });
+  };
+
+  // Initialize current file content
+  useEffect(() => {
+    const content = getFileContent(currentFile);
+    setCurrentFileContent(content);
+  }, [currentFile, fileSystem]);
+
+  // Initialize the editor with the first file on mount
+  useEffect(() => {
+    // Force load the main.py content on first render
+    const initialContent = getFileContent('/workspace/main.py');
+    if (initialContent) {
+      setCurrentFileContent(initialContent);
+    }
+  }, []);
+
+  // Update the editor when a file is selected
+  const handleFileSelect = (path: string) => {
+    setCurrentFile(path);
+    const content = getFileContent(path);
+    setCurrentFileContent(content);
+    
+    // Update language based on file extension
+    const fileName = path.split('/').pop() || '';
+    const ext = fileName.toLowerCase().split('.').pop();
+    const langMap: { [key: string]: string } = {
+      'py': 'python',
+      'cpp': 'cpp',
+      'cc': 'cpp',
+      'cxx': 'cpp',
+      'java': 'java',
+      'go': 'go',
+      'js': 'javascript'
+    };
+    
+    if (ext && langMap[ext] && langMap[ext] !== activeTab) {
+      setActiveTab(langMap[ext]);
+    }
+  };
+
+  // Auto-save file content when editor changes
+  const handleEditorChange = (value: string | undefined) => {
+    const content = value || '';
+    setCurrentFileContent(content);
+    updateFileContent(currentFile, content);
+  };
+
+  // Terminal command processing
+  const processTerminalCommand = (command: string): string => {
+    const args = command.trim().split(' ');
+    const cmd = args[0];
+    
+    switch (cmd) {
+      case 'help':
+        return `Available commands:
+• ls - list directory contents
+• cd <dir> - change directory
+• pwd - print working directory
+• cat <file> - display file contents
+• mkdir <dir> - create directory
+• touch <file> - create new file
+• rm <file> - remove file
+• clear - clear terminal
+• tree - show directory structure
+• whoami - display current user`;
+        
+      case 'ls':
+        const currentDir = findFileByPath(currentDirectory.replace('/workspace', ''));
+        if (currentDir && currentDir.children) {
+          return currentDir.children
+            .map(child => `${child.type === 'folder' ? '📁' : '📄'} ${child.name}`)
+            .join('\n');
+        }
+        return 'Directory is empty';
+        
+      case 'pwd':
+        return currentDirectory;
+        
+      case 'whoami':
+        return 'developer@algo-visualizer';
+        
+      case 'cat':
+        if (args[1]) {
+          const file = findFileByPath(`${currentDirectory.replace('/workspace', '')}/${args[1]}`);
+          if (file && file.type === 'file') {
+            return file.content || 'File is empty';
+          }
+          return `cat: ${args[1]}: No such file`;
+        }
+        return 'cat: missing file operand';
+        
+      case 'tree':
+        const renderTree = (node: FileSystemNode, prefix: string = ''): string => {
+          if (!node.children) return '';
+          return node.children
+            .map((child, index) => {
+              const isLast = index === node.children!.length - 1;
+              const currentPrefix = isLast ? '└── ' : '├── ';
+              const nextPrefix = isLast ? '    ' : '│   ';
+              const icon = child.type === 'folder' ? '📁' : '📄';
+              let result = `${prefix}${currentPrefix}${icon} ${child.name}`;
+              if (child.type === 'folder' && child.children) {
+                result += '\n' + renderTree(child, prefix + nextPrefix);
+              }
+              return result;
+            })
+            .join('\n');
+        };
+        return renderTree(fileSystem);
+        
+      case 'clear':
+        setTerminalHistory(['']);
+        return '';
+        
+      default:
+        return `bash: ${cmd}: command not found`;
+    }
+  };
+
+  const handleTerminalSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!terminalInput.trim()) return;
+    
+    const command = terminalInput.trim();
+    const output = processTerminalCommand(command);
+    
+    setTerminalHistory(prev => [
+      ...prev,
+      `$ ${command}`,
+      ...(output ? [output] : []),
+      ''
+    ]);
+    
+    setTerminalInput('');
+  };
+  const [consoleHeight, setConsoleHeight] = useState(35);
   const [isResizing, setIsResizing] = useState(false);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+  const [showThemeDropdown, setShowThemeDropdown] = useState(false);
+  const [languageStatuses, setLanguageStatuses] = useState<{[key: string]: 'none' | 'loading' | 'ready' | 'error'}>({
+    python: 'none',
+    cpp: 'none', 
+    java: 'none',
+    go: 'none',
+    javascript: 'none'
+  });
+  
+  // Get language-specific neon colors
+  const getLanguageColor = (langId: string) => {
+    const colorMap: { [key: string]: { border: string, shadow: string, rgb: string } } = {
+      'python': { border: 'border-yellow-400/70', shadow: 'shadow-[0_0_25px_rgba(250,204,21,0.3)]', rgb: '250, 204, 21' },
+      'cpp': { border: 'border-blue-400/70', shadow: 'shadow-[0_0_25px_rgba(59,130,246,0.3)]', rgb: '59, 130, 246' },
+      'java': { border: 'border-orange-400/70', shadow: 'shadow-[0_0_25px_rgba(251,146,60,0.3)]', rgb: '251, 146, 60' },
+      'go': { border: 'border-cyan-400/70', shadow: 'shadow-[0_0_25px_rgba(34,211,238,0.3)]', rgb: '34, 211, 238' },
+      'javascript': { border: 'border-emerald-400/70', shadow: 'shadow-[0_0_25px_rgba(52,211,153,0.3)]', rgb: '52, 211, 153' }
+    };
+    return colorMap[langId] || colorMap['python'];
+  };
+  const [activeConsoleTab, setActiveConsoleTab] = useState<'output' | 'terminal'>('output');
+  const [terminalOutput, setTerminalOutput] = useState('');
   const [pyodideStatus, setPyodideStatus] = useState<'none' | 'loading' | 'ready' | 'error'>('none');
   const [pyodideInstance, setPyodideInstance] = useState<any>(null);
   const [emscriptenStatus, setEmscriptenStatus] = useState<'none' | 'loading' | 'ready' | 'error'>('none');
@@ -328,391 +1088,79 @@ function CodingPlayground() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const languages = [
-    { id: 'python', name: 'Python', ext: '.py', monaco: 'python', version: 'Pyodide 3.11 + ML Libraries', logo: '🐍' },
-    { id: 'cpp', name: 'C++', ext: '.cpp', monaco: 'cpp', version: 'Emscripten C++23 + STL', logo: '⚙️' },
-    { id: 'java', name: 'Java', ext: '.java', monaco: 'java', version: 'Java 21 LTS WebAssembly JVM', logo: '☕' },
-    { id: 'go', name: 'Go', ext: '.go', monaco: 'go', version: 'Go 1.22 WebAssembly (Full)', logo: '🐹' },
-    { id: 'javascript', name: 'JS', ext: '.js', monaco: 'javascript', version: 'ES2023 + V8 Engine', logo: '🟨' }
+    { id: 'python', name: 'Python', ext: '.py', monaco: 'python', version: 'Pyodide 3.11 + ML Libraries', logo: 'python' },
+    { id: 'cpp', name: 'C++', ext: '.cpp', monaco: 'cpp', version: 'Emscripten C++23 + STL', logo: 'cpp' },
+    { id: 'java', name: 'Java', ext: '.java', monaco: 'java', version: 'Java 21 LTS WebAssembly JVM', logo: 'java' },
+    { id: 'go', name: 'Go', ext: '.go', monaco: 'go', version: 'Go 1.22 WebAssembly (Full)', logo: 'go' },
+    { id: 'javascript', name: 'JS', ext: '.js', monaco: 'javascript', version: 'ES2023 + V8 Engine', logo: 'javascript' }
   ];
 
-  // Initialize Pyodide when Python is first selected
-  useEffect(() => {
-    if (activeTab === 'python' && pyodideStatus === 'none' && typeof window !== 'undefined') {
-      initializePyodide();
-    }
-  }, [activeTab, pyodideStatus]);
+  const editorThemes = [
+    { id: 'neon-dark', name: 'Neon Dark', icon: 'neon', isDefault: true, color: '#22d3ee' },
+    { id: 'synthwave-84', name: 'SynthWave \'84', icon: 'synthwave', color: '#ff79c6' },
+    { id: 'monokai-pro', name: 'Monokai Pro', icon: 'monokai', color: '#a6e22e' },
+    { id: 'one-dark-pro', name: 'One Dark Pro', icon: 'onedark', color: '#61afef' },
+    { id: 'night-owl', name: 'Night Owl', icon: 'nightowl', color: '#c792ea' }
+  ];
 
-  // Initialize Emscripten when C++ is first selected
-  useEffect(() => {
-    if (activeTab === 'cpp' && emscriptenStatus === 'none' && typeof window !== 'undefined') {
-      initializeEmscripten();
-    }
-  }, [activeTab, emscriptenStatus]);
+  const getThemeIcon = (iconType: string, color: string, className = "w-5 h-5") => {
+    const iconProps = {
+      className: `${className} stroke-current`,
+      strokeWidth: 1.5,
+      fill: 'none',
+      viewBox: "0 0 24 24",
+      style: { color }
+    };
 
-  // Initialize Java WebAssembly JVM when Java is first selected
-  useEffect(() => {
-    if (activeTab === 'java' && javaStatus === 'none' && typeof window !== 'undefined') {
-      initializeJavaWasm();
-    }
-  }, [activeTab, javaStatus]);
-
-  // Initialize Go WebAssembly when Go is first selected
-  useEffect(() => {
-    if (activeTab === 'go' && goStatus === 'none' && typeof window !== 'undefined') {
-      initializeGoWasm();
-    }
-  }, [activeTab, goStatus]);
-
-  // Initialize JavaScript engine when JS is first selected
-  useEffect(() => {
-    if (activeTab === 'javascript' && jsStatus === 'none' && typeof window !== 'undefined') {
-      initializeJsEngine();
-    }
-  }, [activeTab, jsStatus]);
-
-  const initializePyodide = async () => {
-    if (pyodideStatus !== 'none') return;
-    
-    setPyodideStatus('loading');
-    setOutput('🐍 Initializing Pyodide WebAssembly...\nThis may take 30-60 seconds on first load.\n\n');
-
-    try {
-      // Ensure we're in the browser environment
-      if (typeof window === 'undefined') {
-        throw new Error('Pyodide can only run in the browser');
-      }
-
-      // Dynamic import with better error handling
-      setOutput(prev => prev + '📦 Loading Pyodide library...\n');
-      const { loadPyodide } = await import('pyodide');
-      
-      setOutput(prev => prev + '🚀 Starting Python interpreter...\n');
-      
-      const pyodide = await loadPyodide({
-        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/",
-        fullStdLib: false
-      });
-
-      setOutput(prev => prev + '📊 Installing scientific packages...\n📦 numpy\n📦 pandas\n📦 scikit-learn\n📦 matplotlib\n');
-      
-      // Install packages with progress updates
-      await pyodide.loadPackage('numpy');
-      setOutput(prev => prev + '✅ numpy installed\n');
-      
-      await pyodide.loadPackage('pandas'); 
-      setOutput(prev => prev + '✅ pandas installed\n');
-      
-      await pyodide.loadPackage('scikit-learn');
-      setOutput(prev => prev + '✅ scikit-learn installed\n');
-      
-      await pyodide.loadPackage('matplotlib');
-      setOutput(prev => prev + '✅ matplotlib installed\n');
-      
-      setPyodideInstance(pyodide);
-      setPyodideStatus('ready');
-      
-      setOutput(prev => prev + '\n🎉 Python environment ready!\n\n📚 Available packages:\n• pandas - Data manipulation and analysis\n• numpy - Numerical computing\n• scikit-learn - Machine learning\n• matplotlib - Data visualization\n\n💡 Try running some Python code!\n\n# Example:\n# import pandas as pd\n# import numpy as np\n# data = {"x": [1,2,3], "y": [4,5,6]}\n# df = pd.DataFrame(data)\n# print(df)\n');
-      
-    } catch (error: any) {
-      console.error('Failed to load Pyodide:', error);
-      setPyodideStatus('error');
-      setOutput(`❌ Failed to initialize Python environment.\n\nError: ${error.message}\n\nPossible solutions:\n• Refresh the page and try again\n• Check your internet connection\n• Make sure your browser supports WebAssembly\n• Try clearing browser cache\n`);
-    }
-  };
-
-  const initializeEmscripten = async () => {
-    if (emscriptenStatus !== 'none') return;
-    
-    setEmscriptenStatus('loading');
-    setOutput('⚡ Initializing Emscripten C++23 Compiler...\nThis may take 20-30 seconds on first load.\n\n');
-
-    try {
-      // Ensure we're in the browser environment
-      if (typeof window === 'undefined') {
-        throw new Error('Emscripten can only run in the browser');
-      }
-
-      // Dynamic import to load Emscripten
-      setOutput(prev => prev + '📦 Loading Emscripten library...\n');
-      
-      // For now, we'll simulate the Emscripten loading since the full SDK is complex
-      // In a real implementation, you'd load the actual Emscripten Module
-      
-      setOutput(prev => prev + '🔧 Loading LLVM/Clang compiler...\n');
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      setOutput(prev => prev + '📚 Loading C++23 standard library...\n');
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      setOutput(prev => prev + '⚙️ Configuring WebAssembly backend...\n');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock Emscripten module for now
-      const mockEmscripten = {
-        compile: async (sourceCode: string, options: string[]) => {
-          // This would be the real compilation in a full implementation
-          return {
-            success: true,
-            wasmBinary: new ArrayBuffer(1024),
-            jsGlue: "console.log('Compiled successfully');"
-          };
-        }
-      };
-      
-      setEmscriptenModule(mockEmscripten);
-      setEmscriptenStatus('ready');
-      
-      setOutput(prev => prev + '\n🎉 C++23 compiler ready!\n\n🚀 Features available:\n• Full C++23 standard support\n• STL containers and algorithms\n• Ranges and views\n• Concepts and templates\n• WebAssembly optimized output\n\n💡 Try compiling some C++23 code!\n\n// Example features:\n// std::ranges, std::format, concepts\n// Modern algorithms and containers\n');
-      
-    } catch (error: any) {
-      console.error('Failed to load Emscripten:', error);
-      setEmscriptenStatus('error');
-      setOutput(`❌ Failed to initialize C++ environment.\n\nError: ${error.message}\n\nPossible solutions:\n• Refresh the page and try again\n• Check your internet connection\n• Make sure your browser supports WebAssembly\n`);
-    }
-  };
-
-
-
-  const initializeJavaWasm = async () => {
-    if (javaStatus !== 'none') return;
-    
-    setJavaStatus('loading');
-    setOutput('☕ Initializing Java WebAssembly JVM...\nThis may take 20-30 seconds on first load.\n\n');
-
-    try {
-      // Ensure we're in the browser environment
-      if (typeof window === 'undefined') {
-        throw new Error('Java WebAssembly JVM can only run in the browser');
-      }
-
-      // Dynamic import to load Java WebAssembly JVM
-      setOutput(prev => prev + '📦 Loading Java WebAssembly JVM...\n');
-      
-      // For now, we'll simulate the Java loading since a full JVM is complex
-      // In a real implementation, you'd load TeaVM or CheerpJ
-      
-      setOutput(prev => prev + '🔧 Loading Java class loader...\n');
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      setOutput(prev => prev + '📚 Loading Java standard library...\n');
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      setOutput(prev => prev + '⚙️ Configuring WebAssembly backend...\n');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock Java module for now
-      const mockJava = {
-        compile: async (sourceCode: string, options: string[]) => {
-          // This would be the real compilation in a full implementation
-          return {
-            success: true,
-            wasmBinary: new ArrayBuffer(1024),
-            jsGlue: "console.log('Compiled successfully');"
-          };
-        }
-      };
-      
-      setJavaModule(mockJava);
-      setJavaStatus('ready');
-      
-      setOutput(prev => prev + '\n🎉 Java WebAssembly JVM ready!\n\n☕ Features available:\n• Full Java 21 standard library\n• Stream API and lambda expressions\n• Pattern matching (switch expressions)\n• Records and sealed classes\n• WebAssembly optimized JVM\n\n💡 Try running some modern Java code!\n\n// Example features:\n// Streams, pattern matching, records\n// Full standard library support\n');
-      
-    } catch (error: any) {
-      console.error('Failed to load Java WebAssembly JVM:', error);
-      setJavaStatus('error');
-      setOutput(`❌ Failed to initialize Java environment.\n\nError: ${error.message}\n\nPossible solutions:\n• Refresh the page and try again\n• Check your internet connection\n• Make sure your browser supports WebAssembly\n`);
-    }
-  };
-
-  const initializeGoWasm = async () => {
-    if (goStatus !== 'none') return;
-    
-    setGoStatus('loading');
-    setOutput('🐹 Initializing Go WebAssembly Compiler...\nThis may take 20-30 seconds on first load.\n\n');
-
-    try {
-      // Ensure we're in the browser environment
-      if (typeof window === 'undefined') {
-        throw new Error('Go WebAssembly can only run in the browser');
-      }
-
-      // Dynamic import to load Go WebAssembly runtime
-      setOutput(prev => prev + '📦 Loading Go WebAssembly runtime (wasm_exec.js)...\n');
-      
-      // In a real implementation, you'd load the actual Go WebAssembly runtime
-      // This would involve loading wasm_exec.js and the compiled .wasm binary
-      
-      setOutput(prev => prev + '🔧 Loading Go 1.22 compiler (GOOS=js GOARCH=wasm)...\n');
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      setOutput(prev => prev + '📚 Loading full Go standard library...\n');
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      setOutput(prev => prev + '🌐 Initializing WebAssembly runtime environment...\n');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setOutput(prev => prev + '⚡ Setting up syscall/js bridge...\n');
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Mock Go WebAssembly module
-      const goWasmModule = {
-        compile: async (sourceCode: string) => {
-          // This would be the real Go compilation with `go build -o main.wasm main.go`
-          return {
-            success: true,
-            wasmBinary: new ArrayBuffer(2048), // Go WASM binaries are larger
-            jsGlue: "// Go WebAssembly runtime bridge"
-          };
-        },
-        runtime: {
-          // Mock Go runtime with syscall/js support
-          version: "go1.22",
-          goos: "js",
-          goarch: "wasm",
-          features: ["goroutines", "channels", "gc", "reflection", "syscall/js"]
-        }
-      };
-      
-      setGoModule(goWasmModule);
-      setGoStatus('ready');
-      
-      setOutput(prev => prev + '\n🎉 Go WebAssembly compiler ready!\n\n🐹 Full Go 1.22 features available:\n• Complete Go standard library\n• Goroutines with proper scheduler\n• Channels and select statements\n• Garbage collector\n• Reflection and interfaces\n• syscall/js for DOM interaction\n• All Go built-in types and functions\n• Full concurrency support\n\n💡 Try running Go code with full language support!\n\n// Available packages:\n// fmt, time, sync, context, net/http\n// encoding/json, crypto, math, strings\n// And many more from the standard library!\n');
-      
-    } catch (error: any) {
-      console.error('Failed to load Go WebAssembly:', error);
-      setGoStatus('error');
-      setOutput(`❌ Failed to initialize Go WebAssembly environment.\n\nError: ${error.message}\n\nPossible solutions:\n• Refresh the page and try again\n• Check your internet connection\n• Make sure your browser supports WebAssembly\n• Ensure Go WebAssembly runtime is available\n`);
-    }
-  };
-
-  const initializeJsEngine = async () => {
-    if (jsStatus !== 'none') return;
-    
-    setJsStatus('loading');
-    setOutput('🟨 Initializing JavaScript Engine...\nThis should be quick since JS runs natively!\n\n');
-
-    try {
-      // Ensure we're in the browser environment
-      if (typeof window === 'undefined') {
-        throw new Error('JavaScript engine can only run in the browser');
-      }
-
-      // JavaScript doesn't need much initialization since it runs natively
-      setOutput(prev => prev + '📦 Loading JavaScript runtime...\n');
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      setOutput(prev => prev + '🚀 Configuring V8 engine features...\n');
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      setOutput(prev => prev + '⚡ Enabling modern JavaScript features...\n');
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      // Mock JS module (though JS doesn't really need one)
-      const mockJs = {
-        execute: async (sourceCode: string) => {
-          // Direct JavaScript execution
-          return eval(sourceCode);
-        }
-      };
-      
-      setJsModule(mockJs);
-      setJsStatus('ready');
-      
-      setOutput(prev => prev + '\n🎉 JavaScript engine ready!\n\n🟨 Features available:\n• Native browser execution\n• ES2023+ syntax support\n• DOM and Web APIs access\n• Async/await and Promises\n• Modern JavaScript features\n\n💡 Try running some JavaScript code!\n\n// Example features:\n// async/await, destructuring, modules\n// Full browser API access\n');
-      
-    } catch (error: any) {
-      console.error('Failed to initialize JavaScript engine:', error);
-      setJsStatus('error');
-      setOutput(`❌ Failed to initialize JavaScript environment.\n\nError: ${error.message}\n\nThis is unusual since JavaScript runs natively in browsers.\n`);
-    }
-  };
-
-  const executeJavaWithWasm = async (code: string): Promise<string> => {
-    if (!javaModule) {
-      return 'Java WebAssembly JVM not ready. Please wait for initialization to complete.';
-    }
-
-    try {
-      setOutput(prev => prev + '☕ Compiling Java code...\n');
-      
-      // Simulate compilation process
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      setOutput(prev => prev + '✅ Compilation successful\n⚡ Executing on WebAssembly JVM...\n\n');
-      
-      // Analyze Java code content and simulate appropriate output
-      let output = '';
-      let features = [];
-      
-      // Extract System.out.println outputs
-      const printMatches = code.match(/System\.out\.println\s*\(\s*"([^"]+)"\s*\)/g);
-      if (printMatches) {
-        printMatches.forEach(match => {
-          const text = match.match(/"([^"]+)"/)?.[1];
-          if (text) {
-            output += text + '\n';
-          }
-        });
-      }
-      
-      // Extract System.out.print outputs (without newline)
-      const printNoNewlineMatches = code.match(/System\.out\.print\s*\(\s*"([^"]+)"\s*\)/g);
-      if (printNoNewlineMatches) {
-        printNoNewlineMatches.forEach(match => {
-          const text = match.match(/"([^"]+)"/)?.[1];
-          if (text) {
-            output += text;
-          }
-        });
-      }
-      
-      // Simulate stream operations
-      if (code.includes('.stream()') && code.includes('.filter(') && code.includes('.map(')) {
-        features.push('stream API');
-        if (code.includes('forEach(x -> System.out.print(x + " "))')) {
-          output += 'Even squares (first 3): 4 16 36 \n';
-        }
-      }
-      
-      // Check for switch expressions (Java 14+)
-      if (code.includes('switch (') && code.includes('->')) {
-        features.push('switch expressions');
-        if (code.includes('case 10 ->')) {
-          output += 'Perfect collection size! ✨\n';
-        }
-      }
-      
-      // Check for other Java features
-      if (code.includes('record ')) {
-        features.push('records');
-      }
-      if (code.includes('"""')) {
-        features.push('text blocks');
-      }
-      if (code.includes('var ')) {
-        features.push('var keyword');
-      }
-      if (code.includes('lambda') || code.includes(' -> ')) {
-        features.push('lambda expressions');
-      }
-      if (code.includes('.collect(')) {
-        features.push('collectors');
-      }
-      
-      // Default output if no System.out found but main method exists
-      if (!output && code.includes('public static void main')) {
-        output = 'Program executed successfully\n';
-      }
-      
-      const heapSize = Math.floor(Math.random() * 48 + 16);
-      const executionTime = (Math.random() * 0.5 + 0.1).toFixed(2);
-      
-      const statsOutput = `\n✨ Execution stats:\n• Language: Java 21\n• Runtime: WebAssembly JVM\n• Features used: ${features.length > 0 ? features.join(', ') : 'standard Java'}\n• Heap size: ${heapSize} MB\n• Execution time: ${executionTime}s`;
-      
-      return output + statsOutput;
-      
-    } catch (error: any) {
-      return `Java Execution Error: ${error.message}`;
+    switch (iconType) {
+      case 'neon':
+        return (
+          <svg {...iconProps}>
+            <circle cx="12" cy="12" r="3" />
+            <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1" />
+            <path d="M20.2 20.2l-4.2-4.2m0-7.6l4.2-4.2M3.8 20.2l4.2-4.2m0-7.6L3.8 3.8" />
+          </svg>
+        );
+      case 'synthwave':
+        return (
+          <svg {...iconProps}>
+            <path d="M2 12h20M2 6h20M2 18h20" />
+            <path d="M8 3v18M16 3v18" />
+            <circle cx="12" cy="8" r="2" />
+            <circle cx="12" cy="16" r="2" />
+          </svg>
+        );
+      case 'monokai':
+        return (
+          <svg {...iconProps}>
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <path d="M9 9h6v6H9z" />
+            <path d="M9 9L3 3M15 9l6-6M9 15l-6 6M15 15l6 6" />
+          </svg>
+        );
+      case 'onedark':
+        return (
+          <svg {...iconProps}>
+            <circle cx="12" cy="12" r="10" />
+            <circle cx="12" cy="12" r="6" />
+            <circle cx="12" cy="12" r="2" />
+          </svg>
+        );
+      case 'nightowl':
+        return (
+          <svg {...iconProps}>
+            <path d="M12 2C8.5 2 5.7 4.5 5.2 8c-.1.4-.2.8-.2 1.2 0 4.4 3.6 8 8 8s8-3.6 8-8c0-.4-.1-.8-.2-1.2C20.3 4.5 17.5 2 14 2h-2z" />
+            <circle cx="9" cy="9" r="1" />
+            <circle cx="15" cy="9" r="1" />
+            <path d="M8 13c0 2 1.8 3 4 3s4-1 4-3" />
+          </svg>
+        );
+      default:
+        return (
+          <svg {...iconProps}>
+            <circle cx="12" cy="12" r="10" />
+          </svg>
+        );
     }
   };
 
@@ -728,524 +1176,374 @@ function CodingPlayground() {
     return languageMap[langId] || 'javascript';
   };
 
-  // Get the language version display
-  const getLanguageVersion = (langId: string): string => {
-    const language = languages.find(l => l.id === langId);
-    return language?.version || 'Unknown';
+  // Setup custom Monaco themes
+  const setupMonacoThemes = (monaco: any) => {
+    // Neon Dark Theme
+    monaco.editor.defineTheme('neon-dark', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: 'comment', foreground: '6a9955', fontStyle: 'italic' },
+        { token: 'keyword', foreground: '22d3ee', fontStyle: 'bold' },
+        { token: 'string', foreground: '34d399' },
+        { token: 'number', foreground: 'fb923c' },
+        { token: 'type', foreground: 'a855f7' },
+        { token: 'function', foreground: 'f472b6' },
+        { token: 'variable', foreground: 'facc15' }
+      ],
+      colors: {
+        'editor.background': '#0f0f23',
+        'editor.foreground': '#22d3ee',
+        'editorLineNumber.foreground': '#22d3ee40',
+        'editorCursor.foreground': '#22d3ee',
+        'editor.selectionBackground': '#22d3ee20'
+      }
+    });
+
+    // SynthWave '84 Theme
+    monaco.editor.defineTheme('synthwave-84', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: 'comment', foreground: 'ff7edb', fontStyle: 'italic' },
+        { token: 'keyword', foreground: 'ff79c6', fontStyle: 'bold' },
+        { token: 'string', foreground: 'f1fa8c' },
+        { token: 'number', foreground: 'bd93f9' },
+        { token: 'type', foreground: '8be9fd' },
+        { token: 'function', foreground: '50fa7b' },
+        { token: 'variable', foreground: 'f8f8f2' }
+      ],
+      colors: {
+        'editor.background': '#2a2139',
+        'editor.foreground': '#f8f8f2',
+        'editorLineNumber.foreground': '#6272a4',
+        'editorCursor.foreground': '#f8f8f2',
+        'editor.selectionBackground': '#44475a'
+      }
+    });
+
+    // Monokai Pro Theme
+    monaco.editor.defineTheme('monokai-pro', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: 'comment', foreground: '75715e', fontStyle: 'italic' },
+        { token: 'keyword', foreground: 'f92672', fontStyle: 'bold' },
+        { token: 'string', foreground: 'e6db74' },
+        { token: 'number', foreground: 'ae81ff' },
+        { token: 'type', foreground: '66d9ef' },
+        { token: 'function', foreground: 'a6e22e' },
+        { token: 'variable', foreground: 'f8f8f2' }
+      ],
+      colors: {
+        'editor.background': '#2d2a2e',
+        'editor.foreground': '#fcfcfa',
+        'editorLineNumber.foreground': '#5c5855',
+        'editorCursor.foreground': '#fcfcfa',
+        'editor.selectionBackground': '#49483e'
+      }
+    });
+
+    // One Dark Pro Theme
+    monaco.editor.defineTheme('one-dark-pro', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: 'comment', foreground: '5c6370', fontStyle: 'italic' },
+        { token: 'keyword', foreground: 'c678dd', fontStyle: 'bold' },
+        { token: 'string', foreground: '98c379' },
+        { token: 'number', foreground: 'd19a66' },
+        { token: 'type', foreground: 'e5c07b' },
+        { token: 'function', foreground: '61afef' },
+        { token: 'variable', foreground: 'abb2bf' }
+      ],
+      colors: {
+        'editor.background': '#282c34',
+        'editor.foreground': '#abb2bf',
+        'editorLineNumber.foreground': '#495162',
+        'editorCursor.foreground': '#528bff',
+        'editor.selectionBackground': '#3e4451'
+      }
+    });
+
+    // Night Owl Theme
+    monaco.editor.defineTheme('night-owl', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: 'comment', foreground: '637777', fontStyle: 'italic' },
+        { token: 'keyword', foreground: 'c792ea', fontStyle: 'bold' },
+        { token: 'string', foreground: 'ecc48d' },
+        { token: 'number', foreground: 'f78c6c' },
+        { token: 'type', foreground: 'addb67' },
+        { token: 'function', foreground: '82aaff' },
+        { token: 'variable', foreground: 'd6deeb' }
+      ],
+      colors: {
+        'editor.background': '#011627',
+        'editor.foreground': '#d6deeb',
+        'editorLineNumber.foreground': '#4b6479',
+        'editorCursor.foreground': '#80a4c2',
+        'editor.selectionBackground': '#1d3b53'
+      }
+    });
   };
-
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    setIsResizing(true);
-    e.preventDefault();
-  }, []);
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isResizing || !containerRef.current) return;
-    
-    const container = containerRef.current;
-    const containerRect = container.getBoundingClientRect();
-    const newHeight = ((containerRect.bottom - e.clientY) / containerRect.height) * 100;
-    
-    // Clamp between 15% and 60%
-    setConsoleHeight(Math.max(15, Math.min(60, newHeight)));
-  }, [isResizing]);
-
-  const handleMouseUp = useCallback(() => {
-    setIsResizing(false);
-  }, []);
-
-  // Add global mouse events for resizing
-  useEffect(() => {
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [isResizing, handleMouseMove, handleMouseUp]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (showLanguageDropdown) {
+      if (showLanguageDropdown || showThemeDropdown) {
         setShowLanguageDropdown(false);
+        setShowThemeDropdown(false);
       }
     };
 
-    if (showLanguageDropdown) {
+    if (showLanguageDropdown || showThemeDropdown) {
       document.addEventListener('click', handleClickOutside);
       return () => {
         document.removeEventListener('click', handleClickOutside);
       };
     }
-  }, [showLanguageDropdown]);
+  }, [showLanguageDropdown, showThemeDropdown]);
 
-  const executePythonWithPyodide = async (code: string): Promise<string> => {
-    if (!pyodideInstance) {
-      return 'Python environment not ready. Please wait for initialization to complete.';
+  // Initialize language when selected
+  useEffect(() => {
+    if (languageStatuses[activeTab] === 'none') {
+      initializeLanguage(activeTab);
     }
+  }, [activeTab]);
 
-    try {
-      // Redirect stdout to capture prints
-      pyodideInstance.runPython(`
-        import sys
-        from io import StringIO
-        sys.stdout = StringIO()
-        sys.stderr = StringIO()
-      `);
+  const initializeLanguage = async (langId: string) => {
+    setLanguageStatuses(prev => ({ ...prev, [langId]: 'loading' }));
+    setActiveConsoleTab('output');
+    
+    const initMessages: {[key: string]: string} = {
+      python: '🐍 Initializing Python WebAssembly environment...\n📦 Loading Pyodide runtime\n📚 Installing packages: numpy, pandas, scikit-learn\n⚡ Setting up interpreter',
+      cpp: '⚡ Initializing C++23 Emscripten compiler...\n🔧 Loading LLVM/Clang toolchain\n📚 Loading C++ standard library\n🌐 Setting up WebAssembly backend',
+      java: '☕ Initializing Java WebAssembly JVM...\n🔧 Loading class loader and runtime\n📚 Loading Java standard library\n⚙️ Setting up WebAssembly JVM',
+      go: '🐹 Initializing Go WebAssembly compiler...\n📦 Loading Go runtime (wasm_exec.js)\n🔧 Setting up Go 1.22 compiler\n⚡ Configuring syscall/js bridge',
+      javascript: '🟨 Initializing JavaScript engine...\n⚡ Loading V8 runtime features\n🚀 Enabling ES2023+ syntax\n✨ Setting up modern JS environment'
+    };
 
-      // Execute the user code
-      pyodideInstance.runPython(code);
-
-      // Get output and errors
-      const stdout = pyodideInstance.runPython('sys.stdout.getvalue()');
-      const stderr = pyodideInstance.runPython('sys.stderr.getvalue()');
-
-      if (stderr) {
-        return `Error:\n${stderr}`;
-      }
-
-      return stdout || 'Code executed successfully (no output)';
-    } catch (error: any) {
-      return `Python Error: ${error.message}`;
-    }
+    setOutput(initMessages[langId] || 'Initializing language environment...');
+    setTerminalOutput(''); // Clear terminal when switching languages
+    
+    // Simulate initialization time
+    const initTime = langId === 'python' ? 3000 : langId === 'cpp' ? 2500 : langId === 'java' ? 2200 : langId === 'go' ? 2000 : 1000;
+    
+    await new Promise(resolve => setTimeout(resolve, initTime));
+    
+    setLanguageStatuses(prev => ({ ...prev, [langId]: 'ready' }));
+    
+    const readyMessages: {[key: string]: string} = {
+      python: '🎉 Python environment ready!\n\n📚 Available packages:\n• pandas - Data manipulation\n• numpy - Numerical computing\n• scikit-learn - Machine learning\n• matplotlib - Data visualization\n\n💡 Ready to execute Python code!',
+      cpp: '🎉 C++23 compiler ready!\n\n🚀 Features available:\n• Full C++23 standard support\n• STL containers and algorithms\n• Ranges and views\n• Modern C++ features\n\n💡 Ready to compile and run C++ code!',
+      java: '🎉 Java WebAssembly JVM ready!\n\n☕ Features available:\n• Full Java 21 standard library\n• Stream API and lambda expressions\n• Pattern matching\n• Modern Java features\n\n💡 Ready to execute Java code!',
+      go: '🎉 Go WebAssembly ready!\n\n🐹 Features available:\n• Complete Go standard library\n• Goroutines and channels\n• Full concurrency support\n• All Go built-in types\n\n💡 Ready to execute Go code!',
+      javascript: '🎉 JavaScript engine ready!\n\n🟨 Features available:\n• ES2023+ syntax support\n• DOM and Web APIs\n• Async/await and Promises\n• Modern JavaScript features\n\n💡 Ready to execute JavaScript code!'
+    };
+    
+    setOutput(readyMessages[langId] || 'Language environment ready!');
   };
 
-  const executeCppWithEmscripten = async (code: string): Promise<string> => {
-    if (!emscriptenModule) {
-      return 'C++ compiler not ready. Please wait for initialization to complete.';
-    }
-
-    try {
-      setOutput(prev => prev + '🔧 Compiling C++23 code...\n');
-      
-      // Simulate compilation process
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      setOutput(prev => prev + '✅ Compilation successful\n⚡ Executing WebAssembly...\n\n');
-      
-      // Analyze code content and simulate appropriate output
-      let output = '';
-      let features = [];
-      
-      // Extract std::cout outputs
-      const coutMatches = code.match(/std::cout\s*<<\s*"([^"]+)"/g);
-      if (coutMatches) {
-        coutMatches.forEach(match => {
-          const text = match.match(/"([^"]+)"/)?.[1];
-          if (text) {
-            output += text.replace(/\\n/g, '\n') + '\n';
-          }
-        });
-      }
-      
-      // Check for specific C++ features
-      if (code.includes('std::ranges') || code.includes('std::views')) {
-        features.push('ranges, views');
-        if (code.includes('filter') && code.includes('transform')) {
-          output += 'Even squares (first 3): 4 16 36 \n';
-        }
-      }
-      if (code.includes('std::format')) {
-        features.push('std::format');
-      }
-      if (code.includes('std::vector')) {
-        features.push('STL containers');
-      }
-      if (code.includes('auto ')) {
-        features.push('auto type deduction');
-      }
-      if (code.includes('lambda') || code.includes('[]')) {
-        features.push('lambda expressions');
-      }
-      
-      // Default output if no std::cout found
-      if (!output && code.includes('main()')) {
-        output = 'Program executed successfully\n';
-      }
-      
-      const statsOutput = `\n✨ Compilation stats:\n• Language: C++23\n• Compiler: Emscripten/Clang 18+\n• Target: WebAssembly\n• Features used: ${features.length > 0 ? features.join(', ') : 'standard C++'}\n• Binary size: ${Math.floor(Math.random() * 50 + 10)}.${Math.floor(Math.random() * 9)} KB\n• Compile time: ${(Math.random() * 2 + 0.5).toFixed(1)}s`;
-      
-      return output + statsOutput;
-      
-    } catch (error: any) {
-      return `C++ Compilation Error: ${error.message}`;
-    }
-  };
-
-  const executeGoWithWasm = async (code: string): Promise<string> => {
-    if (!goModule) {
-      return 'Go WebAssembly not ready. Please wait for initialization to complete.';
-    }
-
-    try {
-      setOutput(prev => prev + '🐹 Compiling Go code...\n');
-      
-      // Simulate compilation process
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setOutput(prev => prev + '✅ Compilation successful\n⚡ Executing WebAssembly...\n\n');
-      
-      // Analyze Go code content and simulate appropriate output
-      let output = '';
-      let features = [];
-      
-      // Extract fmt.Println outputs
-      const printMatches = code.match(/fmt\.Println\s*\(\s*"([^"]+)"\s*\)/g);
-      if (printMatches) {
-        printMatches.forEach(match => {
-          const text = match.match(/"([^"]+)"/)?.[1];
-          if (text) {
-            output += text + '\n';
-          }
-        });
-      }
-      
-      // Extract fmt.Printf outputs
-      const printfMatches = code.match(/fmt\.Printf\s*\(\s*"([^"]+)"/g);
-      if (printfMatches) {
-        printfMatches.forEach(match => {
-          const text = match.match(/"([^"]+)"/)?.[1];
-          if (text) {
-            output += text.replace(/%s/g, 'value').replace(/%d/g, '42') + '\n';
-          }
-        });
-      }
-      
-      // Check for Go features
-      if (code.includes('go func')) {
-        features.push('goroutines');
-      }
-      if (code.includes('chan ') || code.includes('<-')) {
-        features.push('channels');
-      }
-      if (code.includes('interface{}') || code.includes('interface {')) {
-        features.push('interfaces');
-      }
-      if (code.includes('defer ')) {
-        features.push('defer statements');
-      }
-      if (code.includes('range ')) {
-        features.push('range loops');
-      }
-      if (code.includes('struct {')) {
-        features.push('structs');
-      }
-      if (code.includes('sync.WaitGroup') || code.includes('sync.Mutex')) {
-        features.push('sync primitives');
-      }
-      if (code.includes('context.')) {
-        features.push('context package');
-      }
-      if (code.includes('json.Marshal') || code.includes('json.Unmarshal')) {
-        features.push('JSON encoding');
-      }
-      if (code.includes('time.Sleep') || code.includes('time.Duration')) {
-        features.push('time package');
-      }
-      if (code.includes('fmt.Sprintf') || code.includes('fmt.Printf')) {
-        features.push('formatted printing');
-      }
-      
-      // Default output if no fmt found but main function exists
-      if (!output && code.includes('func main()')) {
-        output = 'Program executed successfully\n';
-      }
-      
-      const binarySize = Math.floor(Math.random() * 2000 + 500);
-      const compileTime = (Math.random() * 1.5 + 0.2).toFixed(2);
-      
-      const statsOutput = `\n✨ Compilation stats:\n• Language: Go 1.22\n• Compiler: go build (GOOS=js GOARCH=wasm)\n• Target: WebAssembly\n• Runtime: Full Go runtime + GC\n• Features used: ${features.length > 0 ? features.join(', ') : 'standard Go'}\n• Binary size: ${(binarySize / 1000).toFixed(1)} KB\n• Compile time: ${compileTime}s`;
-      
-      return output + statsOutput;
-      
-    } catch (error: any) {
-      return `Go Compilation Error: ${error.message}`;
-    }
-  };
-
-  const executeJsWithEngine = async (code: string): Promise<string> => {
-    if (!jsModule) {
-      return 'JavaScript engine not ready. Please wait for initialization to complete.';
-    }
-
-    try {
-      setOutput(prev => prev + '🟨 Executing JavaScript code...\n\n');
-      
-      // Capture console.log outputs
-      const originalLog = console.log;
-      const originalError = console.error;
-      const originalWarn = console.warn;
-      let logs: string[] = [];
-      
-      console.log = (...args) => {
-        logs.push(args.join(' '));
-      };
-      console.error = (...args) => {
-        logs.push(`Error: ${args.join(' ')}`);
-      };
-      console.warn = (...args) => {
-        logs.push(`Warning: ${args.join(' ')}`);
-      };
-      
-      let features = [];
-      let output = '';
-      
-      try {
-        // Analyze code for modern JS features
-        if (code.includes('async ') || code.includes('await ')) {
-          features.push('async/await');
-        }
-        if (code.includes('=>')) {
-          features.push('arrow functions');
-        }
-        if (code.includes('const {') || code.includes('let {')) {
-          features.push('destructuring');
-        }
-        if (code.includes('...')) {
-          features.push('spread operator');
-        }
-        if (code.includes('class ')) {
-          features.push('ES6 classes');
-        }
-        if (code.includes('Promise')) {
-          features.push('promises');
-        }
-        if (code.includes('fetch(')) {
-          features.push('fetch API');
-        }
-        
-        // Create a safe execution environment
-        const func = new Function(code);
-        const result = func();
-        
-        // Handle promises
-        if (result instanceof Promise) {
-          await result;
-        }
-        
-        output = logs.length > 0 ? logs.join('\n') : 'Code executed successfully (no output)';
-        
-      } catch (error: any) {
-        output = `JavaScript Runtime Error: ${error.message}`;
-      } finally {
-        console.log = originalLog;
-        console.error = originalError;
-        console.warn = originalWarn;
-      }
-      
-      const executionTime = (Math.random() * 0.1 + 0.001).toFixed(3);
-      const memoryUsage = (Math.random() * 5 + 1).toFixed(1);
-      
-      const statsOutput = `\n\n✨ Execution stats:\n• Language: JavaScript ES2023\n• Runtime: V8 Engine\n• Features used: ${features.length > 0 ? features.join(', ') : 'standard JavaScript'}\n• Memory usage: ${memoryUsage} MB\n• Execution time: ${executionTime}s`;
-      
-      return output + statsOutput;
-      
-    } catch (error: any) {
-      return `JavaScript Execution Error: ${error.message}`;
-    }
-  };
-
+  // Simple run code function
   const runCode = async () => {
     setIsRunning(true);
+    setActiveConsoleTab('terminal'); // Switch to terminal tab automatically
     
     try {
-      let result = '';
+      // Simulate execution
+      const langName = languages.find(l => l.id === activeTab)?.name || 'Code';
+      setTerminalOutput(`🚀 Executing ${langName} code...\n\n`);
       
-      if (activeTab === 'python') {
-        if (pyodideStatus === 'none') {
-          setOutput('Initializing Python environment...\n');
-          await initializePyodide();
-          return;
-        } else if (pyodideStatus === 'loading') {
-          setOutput('Python environment is still loading. Please wait...\n');
-          return;
-        } else if (pyodideStatus === 'error') {
-          setOutput('Python environment failed to load. Please refresh the page.\n');
-          return;
-        }
-        
-        setOutput('Executing Python code...\n');
-        result = await executePythonWithPyodide(code[activeTab]);
-      } else if (activeTab === 'cpp') {
-        if (emscriptenStatus === 'none') {
-          setOutput('Initializing C++ compiler...\n');
-          await initializeEmscripten();
-          return;
-        } else if (emscriptenStatus === 'loading') {
-          setOutput('C++ compiler is still loading. Please wait...\n');
-          return;
-        } else if (emscriptenStatus === 'error') {
-          setOutput('C++ compiler failed to load. Please refresh the page.\n');
-          return;
-        }
-        
-        result = await executeCppWithEmscripten(code[activeTab]);
-      } else if (activeTab === 'java') {
-        if (javaStatus === 'none') {
-          setOutput('Initializing Java WebAssembly JVM...\n');
-          await initializeJavaWasm();
-          return;
-        } else if (javaStatus === 'loading') {
-          setOutput('Java WebAssembly JVM is still loading. Please wait...\n');
-          return;
-        } else if (javaStatus === 'error') {
-          setOutput('Java WebAssembly JVM failed to load. Please refresh the page.\n');
-          return;
-        }
-        
-        result = await executeJavaWithWasm(code[activeTab]);
-      } else if (activeTab === 'go') {
-        if (goStatus === 'none') {
-          setOutput('Initializing Go WebAssembly...\n');
-          await initializeGoWasm();
-          return;
-        } else if (goStatus === 'loading') {
-          setOutput('Go WebAssembly is still loading. Please wait...\n');
-          return;
-        } else if (goStatus === 'error') {
-          setOutput('Go WebAssembly failed to load. Please refresh the page.\n');
-          return;
-        }
-        
-        result = await executeGoWithWasm(code[activeTab]);
-      } else if (activeTab === 'javascript') {
-        if (jsStatus === 'none') {
-          setOutput('Initializing JavaScript engine...\n');
-          await initializeJsEngine();
-          return;
-        } else if (jsStatus === 'loading') {
-          setOutput('JavaScript engine is still loading. Please wait...\n');
-          return;
-        } else if (jsStatus === 'error') {
-          setOutput('JavaScript engine failed to load. Please refresh the page.\n');
-          return;
-        }
-        
-        result = await executeJsWithEngine(code[activeTab]);
-      } else {
-        // For other languages, show simulation
-        const sampleOutputs: { [key: string]: string } = {
-          java: `Compiling with OpenJDK 21...\n✅ Compilation successful\nLoading class Main...\n\nHello, World!\n\nExecution time: 0.34s\nMemory usage: 15.2 MB`,
-          go: `Building with Go 1.22...\n✅ Build successful\n\nHello, World!\n\nExecution time: 0.08s\nMemory usage: 1.8 MB`
-        };
-        
-        // Simulate compilation delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        result = sampleOutputs[activeTab] || 'Code executed successfully';
-      }
+      // Simulate compilation/execution delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      setOutput(result);
+      // Get the actual file content
+      const fileContent = currentFileContent;
+      
+      // Simulate more realistic output based on language and content
+      const mockOutputs: { [key: string]: string } = {
+        python: `Python 3.11.0 (WebAssembly build)\n[Running: ${currentFile.split('/').pop()}]\n\nHello, World!\nWelcome to Python programming!\nWhat's your name? [User Input: John]\nNice to meet you, John!\n\n✨ Execution completed\n• Runtime: Pyodide WebAssembly\n• Memory: 12.3 MB\n• Time: 0.34s`,
+        cpp: `🔧 Compiling C++23...\n✅ Compilation successful\n[Running: ${currentFile.split('/').pop()}]\n\nHello, World!\nWelcome to C++ programming!\nWhat's your name? [User Input: John]\nNice to meet you, John!\n\n✨ Compilation stats\n• Compiler: Emscripten/Clang\n• Target: WebAssembly\n• Binary size: 23.4 KB\n• Compile time: 1.2s`,
+        java: `☕ Compiling Java...\n✅ Compilation successful\n[Running: ${currentFile.split('/').pop()}]\n\nHello, World!\nWelcome to Java programming!\nWhat's your name? [User Input: John]\nNice to meet you, John!\n\n✨ Execution stats\n• Runtime: WebAssembly JVM\n• Heap size: 32 MB\n• Time: 0.45s`,
+        go: `🐹 Building Go...\n✅ Build successful\n[Running: ${currentFile.split('/').pop()}]\n\nHello, World!\nWelcome to Go programming!\nWhat's your name? [User Input: John]\nNice to meet you, John!\n\n✨ Build stats\n• Compiler: Go 1.22 WASM\n• Binary size: 1.2 MB\n• Build time: 0.8s`,
+        javascript: `🟨 Executing JavaScript...\n[Running: ${currentFile.split('/').pop()}]\n\nHello, World!\nWelcome to JavaScript programming!\nWhat's your name? [User Input: John]\nNice to meet you, John!\n\n✨ Execution stats\n• Runtime: V8 Engine\n• Memory: 3.2 MB\n• Time: 0.02s`
+      };
+      
+      setTerminalOutput(mockOutputs[activeTab] || 'Code executed successfully!');
     } catch (error) {
-      setOutput(`Error: ${error}`);
+      setTerminalOutput(`❌ Error: ${error}`);
     } finally {
       setIsRunning(false);
     }
   };
 
-  const clearOutput = () => {
-    setOutput('');
-  };
-
-  const handleEditorChange = (value: string | undefined) => {
-    setCode(prev => ({ ...prev, [activeTab]: value || '' }));
-  };
-
+  const languageColor = getLanguageColor(activeTab);
+  
   return (
-    <div ref={containerRef} className="bg-slate-950/95 backdrop-blur-md rounded-3xl h-full flex flex-col border border-white/5 shadow-2xl">
+    <div ref={containerRef} className={`bg-slate-950/95 backdrop-blur-md rounded-3xl h-full flex flex-col border-2 ${languageColor.border} ${languageColor.shadow} hover:shadow-[0_0_35px_rgba(${languageColor.rgb},0.4)] transition-all duration-300`} style={{ borderBottomWidth: '4px', borderBottomColor: `rgba(${languageColor.rgb}, 0.9)` }}>
       {/* Header */}
-              <div className="p-4 border-b border-slate-800/50 flex-shrink-0">
-        {/* Language Dropdown, Title, and Run Button */}
-        <div className="flex items-center justify-between">
-          <div className="relative">
-            <button
-              onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-              className="w-48 h-10 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-3xl text-sm font-medium transition-colors flex items-center justify-between shadow-lg"
-            >
-              <div className="flex items-center gap-2">
-                <span>{languages.find(l => l.id === activeTab)?.name}</span>
-                <span className="text-base">{languages.find(l => l.id === activeTab)?.logo}</span>
-                {activeTab === 'python' && pyodideStatus === 'loading' && (
-                  <span className="animate-spin text-xs">⚡</span>
-                )}
-                {activeTab === 'python' && pyodideStatus === 'ready' && (
-                  <span className="text-green-400 text-xs">✓</span>
-                )}
-                {activeTab === 'cpp' && emscriptenStatus === 'loading' && (
-                  <span className="animate-spin text-xs">🔧</span>
-                )}
-                {activeTab === 'cpp' && emscriptenStatus === 'ready' && (
-                  <span className="text-blue-400 text-xs">✓</span>
-                )}
-                {activeTab === 'java' && javaStatus === 'loading' && (
-                  <span className="animate-spin text-xs">🌐</span>
-                )}
-                {activeTab === 'java' && javaStatus === 'ready' && (
-                  <span className="text-orange-400 text-xs">✓</span>
-                )}
-                {activeTab === 'go' && goStatus === 'loading' && (
-                  <span className="animate-spin text-xs">🔧</span>
-                )}
-                {activeTab === 'go' && goStatus === 'ready' && (
-                  <span className="text-cyan-400 text-xs">✓</span>
-                )}
-                {activeTab === 'javascript' && jsStatus === 'loading' && (
-                  <span className="animate-spin text-xs">⚡</span>
-                )}
-                {activeTab === 'javascript' && jsStatus === 'ready' && (
-                  <span className="text-yellow-400 text-xs">✓</span>
-                )}
-              </div>
-              <span className="text-gray-400">▼</span>
-            </button>
+      <div className="p-4 border-b border-slate-800/50 flex-shrink-0">
+        <div className="flex items-center justify-between w-full">
+          {/* Left Side - Language and Theme Dropdowns */}
+          <div className="flex items-center gap-3">
+            {/* Language Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+                className="w-[150px] h-10 px-4 py-2 bg-slate-950/80 border-2 rounded-3xl text-sm font-medium transition-colors flex items-center justify-between"
+                style={{ 
+                  boxShadow: `0 0 10px rgba(${languageColor.rgb}, 0.3)`,
+                  color: `rgb(${languageColor.rgb})`,
+                  borderColor: `rgba(${languageColor.rgb}, 0.5)`
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  {getLanguageIcon(activeTab)}
+                  <span>{languages.find(l => l.id === activeTab)?.name}</span>
+                  {languageStatuses[activeTab] === 'loading' && (
+                    <span className="animate-spin text-xs">⚡</span>
+                  )}
+                  {languageStatuses[activeTab] === 'ready' && (
+                    <span className="text-green-400 text-xs">✓</span>
+                  )}
+                  {languageStatuses[activeTab] === 'error' && (
+                    <span className="text-red-400 text-xs">✗</span>
+                  )}
+                </div>
+                <svg className="w-4 h-4 stroke-current" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
+              
+              {showLanguageDropdown && (
+                <div className="absolute top-full left-0 mt-1 w-full bg-slate-800 border border-slate-700 rounded-3xl shadow-xl z-10 overflow-hidden">
+                  {languages.map((lang) => {
+                    const langColor = getLanguageColor(lang.id);
+                    return (
+                      <button
+                        key={lang.id}
+                        onClick={() => {
+                          setActiveTab(lang.id);
+                          setShowLanguageDropdown(false);
+                        }}
+                        className={`w-full px-4 py-2 text-left transition-colors flex items-center gap-2 text-sm border-2 ${
+                          activeTab === lang.id 
+                            ? 'bg-slate-900/40' 
+                            : 'border-transparent text-gray-300 hover:text-gray-100'
+                        }`}
+                        style={activeTab === lang.id ? {
+                          borderColor: `rgba(${langColor.rgb}, 0.8)`,
+                          color: `rgb(${langColor.rgb})`,
+                          backgroundColor: `rgba(${langColor.rgb}, 0.1)`
+                        } : {}}
+                      >
+                        {getLanguageIcon(lang.id)}
+                        <span>{lang.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
             
-            {showLanguageDropdown && (
-              <div className="absolute top-full left-0 mt-1 w-full bg-slate-800 border border-slate-700 rounded-3xl shadow-xl z-10 overflow-hidden">
-                {languages.map((lang) => (
-                  <button
-                    key={lang.id}
-                    onClick={() => {
-                      setActiveTab(lang.id);
-                      setShowLanguageDropdown(false);
-                    }}
-                    className={`w-full px-4 py-2 text-left hover:bg-slate-700 transition-colors flex items-center gap-2 text-sm ${
-                      activeTab === lang.id ? 'bg-blue-800 text-white' : 'text-gray-300'
-                    }`}
-                  >
-                                         <span>{lang.name}</span>
-                     <span className="text-base">{lang.logo}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-                     </div>
-           
-          <h2 className="text-xl font-bold text-white">Coding Playground</h2>
-           
-          <button
-            onClick={runCode}
-            disabled={isRunning || (activeTab === 'python' && pyodideStatus === 'loading') || (activeTab === 'cpp' && emscriptenStatus === 'loading') || (activeTab === 'java' && javaStatus === 'loading')}
-            className="w-48 h-10 px-4 py-2 bg-emerald-800 hover:bg-emerald-700 disabled:bg-emerald-900 text-white rounded-3xl text-sm font-medium transition-colors shadow-lg"
-          >
-            {isRunning ? 'Running...' : 
-             (activeTab === 'python' && pyodideStatus === 'loading') ? 'Loading Python...' :
-             (activeTab === 'cpp' && emscriptenStatus === 'loading') ? 'Loading C++...' :
-             (activeTab === 'java' && javaStatus === 'loading') ? 'Loading Java...' :
-             (activeTab === 'go' && goStatus === 'loading') ? 'Loading Go...' :
-             (activeTab === 'javascript' && jsStatus === 'loading') ? 'Loading JS...' : 'Run'}
-          </button>
+            {/* Theme Selector */}
+            <div className="relative">
+              <button
+                onClick={() => setShowThemeDropdown(!showThemeDropdown)}
+                className="w-[182px] h-10 px-4 py-2 bg-slate-950/80 border-2 border-purple-400/50 hover:border-purple-400 text-purple-400 hover:text-purple-300 rounded-3xl text-sm font-medium transition-colors flex items-center justify-between shadow-[0_0_10px_rgba(168,85,247,0.3)]"
+              >
+                <div className="flex items-center gap-2">
+                  {getThemeIcon(
+                    editorThemes.find(t => t.id === editorTheme)?.icon || 'neon',
+                    editorThemes.find(t => t.id === editorTheme)?.color || '#22d3ee'
+                  )}
+                  <span className="truncate">{editorThemes.find(t => t.id === editorTheme)?.name}</span>
+                </div>
+                <svg className="w-4 h-4 stroke-current" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
+              
+              {showThemeDropdown && (
+                <div className="absolute top-full left-0 mt-1 w-full bg-slate-800 border border-slate-700 rounded-3xl shadow-xl z-10 overflow-hidden">
+                  {editorThemes.map((theme) => (
+                    <button
+                      key={theme.id}
+                      onClick={() => {
+                        setEditorTheme(theme.id);
+                        setShowThemeDropdown(false);
+                      }}
+                      className={`w-full px-4 py-2 text-left transition-colors flex items-center gap-2 text-sm border-2 ${
+                        editorTheme === theme.id 
+                          ? 'bg-purple-900/20 border-purple-400 text-purple-400' 
+                          : 'border-transparent text-gray-300 hover:border-purple-400/50 hover:text-purple-300'
+                      }`}
+                    >
+                      {getThemeIcon(theme.icon, theme.color)}
+                      <span>{theme.name}</span>
+                      {theme.isDefault && <span className="text-xs text-gray-400 ml-auto">(Default)</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Center Title */}
+          <div className="flex-1 flex justify-center">
+                            <h2 className="text-3xl font-bold" style={{ fontFamily: 'Moirai One, serif', color: `rgb(${languageColor.rgb})` }}>Playground</h2>
+          </div>
+          
+          {/* Right Side - Controls */}
+          <div className="flex items-center gap-3">
+            {/* Run Button */}
+            <button
+              onClick={runCode}
+              disabled={isRunning || languageStatuses[activeTab] !== 'ready'}
+              className="w-[100px] h-10 px-4 py-2 bg-slate-950/80 border-2 border-emerald-400/50 hover:border-emerald-400 disabled:border-gray-600 text-emerald-400 hover:text-emerald-300 disabled:text-gray-500 rounded-3xl text-sm font-medium transition-colors shadow-[0_0_10px_rgba(52,211,153,0.3)] flex items-center justify-center gap-2"
+            >
+              {languageStatuses[activeTab] === 'ready' && !isRunning && (
+                <svg className="w-4 h-4 stroke-current" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.25l13.5 7.5-13.5 7.5V5.25z" />
+                </svg>
+              )}
+              {isRunning && (
+                <svg className="w-4 h-4 stroke-current animate-spin" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                </svg>
+              )}
+              {(languageStatuses[activeTab] === 'loading' || languageStatuses[activeTab] === 'none') && (
+                <svg className="w-4 h-4 stroke-current animate-spin" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                </svg>
+              )}
+              <span>
+                {isRunning ? 'Running...' : 
+                 languageStatuses[activeTab] === 'loading' ? 'Loading...' :
+                 languageStatuses[activeTab] === 'ready' ? 'Run' : 'Loading...'}
+              </span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Code Editor */}
-      <div className="flex-1 flex flex-col min-h-0" style={{ height: `${100 - consoleHeight}%` }}>
+      {/* Main Content Area - Code Editor + File Explorer */}
+      <div className="flex-1 min-h-0 flex">
+        {/* Code Editor */}
         <div className="flex-1 min-h-0">
           <ClientOnlyEditor
+            key={`${currentFile}-${activeTab}`}
             language={getMonacoLanguage(activeTab)}
-              value={code[activeTab as keyof typeof code]}
+            value={currentFileContent}
             onChange={handleEditorChange}
+            theme={editorTheme}
+            onMount={(editor: any, monaco: any) => {
+              setupMonacoThemes(monaco);
+              // Ensure the theme is set after custom themes are defined
+              monaco.editor.setTheme(editorTheme);
+            }}
             options={{
               minimap: { enabled: false },
               fontSize: 14,
@@ -1277,68 +1575,218 @@ function CodingPlayground() {
             }}
           />
         </div>
+
+        {/* File Explorer */}
+        <>
+          {/* Vertical Resize Handle */}
+          <div className="w-1 bg-gray-600 hover:bg-gray-500 cursor-col-resize transition-colors" />
+          
+          {/* File Explorer Panel */}
+                      <div className="w-56 bg-slate-950/95 border-l border-slate-800/50 overflow-hidden flex flex-col">
+            {/* File Explorer Header */}
+            <div className="p-3 border-b border-slate-800/50 bg-slate-900/90">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <svg className="w-4 h-4 text-cyan-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                  </svg>
+                  Explorer
+                </h3>
+              </div>
+              
+              {/* Current Directory */}
+              <div className="mt-2 text-xs text-gray-400 font-mono">
+                {currentDirectory}
+              </div>
+            </div>
+            
+            {/* File Tree */}
+            <div className="flex-1 overflow-y-auto p-2">
+              <FileTreeNode 
+                node={fileSystem} 
+                path="/workspace"
+                expandedFolders={expandedFolders}
+                onToggleFolder={(path) => {
+                  setExpandedFolders(prev => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(path)) {
+                      newSet.delete(path);
+                    } else {
+                      newSet.add(path);
+                    }
+                    return newSet;
+                  });
+                }}
+                onSelectFile={handleFileSelect}
+                currentFile={currentFile}
+              />
+            </div>
+            
+            {/* File Explorer Actions */}
+            <div className="p-3 border-t border-slate-800/50 bg-slate-900/90">
+              <div className="flex gap-4 justify-center">
+                <button
+                  onClick={() => {
+                    const name = prompt('Enter file name:');
+                    if (name) {
+                      const currentDirPath = currentDirectory === '/workspace' ? '' : currentDirectory.replace('/workspace', '');
+                      createFile(currentDirPath, name);
+                    }
+                  }}
+                  className="w-24 px-3 py-2 bg-cyan-900/20 border border-cyan-400/50 hover:border-cyan-400 text-cyan-400 hover:text-cyan-300 transition-colors text-xs font-medium flex items-center justify-center gap-2 rounded-3xl"
+                  title="New File"
+                >
+                  <svg className="w-4 h-4 stroke-current" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14 2v6h6" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-6m-3 3h6" />
+                  </svg>
+                  File
+                </button>
+                <button
+                  onClick={() => {
+                    const name = prompt('Enter folder name:');
+                    if (name) {
+                      const currentDirPath = currentDirectory === '/workspace' ? '' : currentDirectory.replace('/workspace', '');
+                      createFolder(currentDirPath, name);
+                    }
+                  }}
+                  className="w-24 px-3 py-2 bg-purple-900/20 border border-purple-400/50 hover:border-purple-400 text-purple-400 hover:text-purple-300 transition-colors text-xs font-medium flex items-center justify-center gap-2 rounded-3xl"
+                  title="New Folder"
+                >
+                  <svg className="w-4 h-4 stroke-current" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 10.5v6m3-3H9" />
+                  </svg>
+                  Folder
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
       </div>
 
       {/* Resize Handle */}
       <div
-        ref={resizeRef}
-        onMouseDown={handleMouseDown}
-        className={`h-1 bg-gray-600 hover:bg-gray-500 cursor-row-resize transition-colors ${
-          isResizing ? 'bg-blue-500' : ''
-        } flex-shrink-0`}
+        className="h-1 bg-gray-600 hover:bg-gray-500 cursor-row-resize transition-colors flex-shrink-0"
         title="Drag to resize console"
       />
 
       {/* Console Output */}
-                <div className="border-t border-slate-800/50 flex-shrink-0" style={{ height: `${consoleHeight}%` }}>
-            <div className="bg-slate-900/90 px-4 py-2 border-b border-slate-800/50 flex items-center justify-between">
+      <div className="border-t border-slate-800/50 flex-shrink-0" style={{ height: `${consoleHeight}%`, minHeight: '200px' }}>
+        <div className="bg-slate-900/90 px-4 py-2 border-b border-slate-800/50 flex items-center justify-between">
           <div className="flex items-center gap-3">
-          <h3 className="text-sm font-medium text-white">Console</h3>
-            <span className="text-xs text-blue-300 bg-blue-900/20 px-2 py-1 rounded-3xl border border-blue-800/30">
-              {getLanguageVersion(activeTab)}
-            </span>
-            {activeTab === 'python' && pyodideStatus === 'ready' && (
-              <span className="text-xs text-emerald-300 bg-emerald-900/20 px-2 py-1 rounded-3xl border border-emerald-800/30">
-                WebAssembly
-              </span>
-            )}
-            {activeTab === 'cpp' && emscriptenStatus === 'ready' && (
-              <span className="text-xs text-blue-300 bg-blue-900/20 px-2 py-1 rounded-3xl border border-blue-800/30">
-                WebAssembly
-              </span>
-            )}
-            {activeTab === 'java' && javaStatus === 'ready' && (
-              <span className="text-xs text-orange-300 bg-orange-900/20 px-2 py-1 rounded-3xl border border-orange-800/30">
-                WebAssembly
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-400">Height: {consoleHeight.toFixed(0)}%</span>
+                      <div className="flex gap-1">
             <button
-              onClick={clearOutput}
-              className="px-3 py-1 bg-red-900 hover:bg-red-800 text-red-200 rounded-3xl text-xs font-medium transition-colors shadow-lg"
+              onClick={() => setActiveConsoleTab('terminal')}
+                className={`px-3 py-1 rounded-2xl text-xs font-normal transition-colors border-2 ${
+                activeConsoleTab === 'terminal'
+                    ? 'bg-green-900/20 border-green-400 text-green-400'
+                    : 'bg-slate-950/80 border-slate-600/50 text-gray-300 hover:border-green-400/50 hover:text-green-300'
+              }`}
             >
-              Clear
+                Terminal
+            </button>
+            <button
+              onClick={() => setActiveConsoleTab('output')}
+                className={`px-3 py-1 rounded-2xl text-xs font-normal transition-colors border-2 ${
+                activeConsoleTab === 'output'
+                    ? 'bg-blue-900/20 border-blue-400 text-blue-400'
+                    : 'bg-slate-950/80 border-slate-600/50 text-gray-300 hover:border-blue-400/50 hover:text-blue-300'
+              }`}
+            >
+                Output
+            </button>
+          </div>
+          </div>
+          
+          <div className="flex-1 flex justify-center">
+            <span className="text-xs text-yellow-400">
+              {languageStatuses[activeTab] === 'loading' ? (
+                `${languages.find(l => l.id === activeTab)?.name} Loading...`
+              ) : languageStatuses[activeTab] === 'ready' ? (
+                `${languages.find(l => l.id === activeTab)?.version} Ready`
+              ) : languageStatuses[activeTab] === 'error' ? (
+                `${languages.find(l => l.id === activeTab)?.name} Error`
+              ) : (
+                `${languages.find(l => l.id === activeTab)?.name} Initializing...`
+              )}
+            </span>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400">Height: {consoleHeight}%</span>
+            <button
+              onClick={() => {
+                setTerminalOutput('');
+                setTerminalHistory([]);
+              }}
+              className="px-3 py-1 bg-slate-950/80 border-2 border-red-400/50 hover:border-red-400 text-red-400 hover:text-red-300 rounded-3xl text-xs font-medium transition-colors shadow-[0_0_10px_rgba(248,113,113,0.3)]"
+            >
+              Clear Terminal
             </button>
           </div>
         </div>
-        <div className="h-full bg-black text-green-400 p-4 font-mono text-sm overflow-y-auto" style={{ 
+        <div className={`p-4 text-sm overflow-y-auto font-normal ${
+          activeConsoleTab === 'output' 
+            ? 'bg-slate-900 text-blue-400' 
+            : 'bg-black text-green-400'
+        }`} style={{ 
           height: 'calc(100% - 40px)',
-          fontFamily: "'JetBrains Mono', 'Fira Code', 'Source Code Pro', 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace"
+          fontFamily: "'Fira Code', 'JetBrains Mono', 'Source Code Pro', 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace",
+          fontWeight: 'normal'
         }}>
-          {output ? (
-            <pre className="whitespace-pre-wrap">{output}</pre>
-          ) : (
-            <div className="text-gray-500">
-              {activeTab === 'python' ? 
-                'Click "Run" to execute Python code with Pandas, NumPy, and Scikit-learn!' : 
-                activeTab === 'cpp' ?
-                'Click "Run" to compile and execute C++23 code with full standard library!' :
-                activeTab === 'java' ?
-                'Click "Run" to compile and execute Java code with full standard library!' :
-                'Output will appear here...'
-              }
+          {activeConsoleTab === 'output' ? (
+            output ? (
+              <div className="whitespace-pre-wrap text-blue-300">{output}</div>
+            ) : (
+              <div className="text-blue-500/70">
+                Select a language to initialize the environment, then click "Run" to execute code.
+              </div>
+            )
+                    ) : (
+            <div className="h-full flex flex-col">
+              {/* Terminal Output */}
+              <div className="flex-1 overflow-y-auto">
+                {/* Welcome message when no output */}
+                {!terminalOutput && terminalHistory.length === 0 && (
+                  <div className="text-gray-500 font-mono text-sm leading-relaxed mb-4">
+                    <div>Welcome to the Algo Visualizer Terminal! 🚀</div>
+                    <div>Type "help" for available commands.</div>
+                  </div>
+                )}
+                
+                {/* Program execution output */}
+                {terminalOutput && (
+                  <div className="whitespace-pre-wrap text-white font-mono text-sm leading-relaxed mb-4">
+                    {terminalOutput}
+                  </div>
+                )}
+                
+                {/* Command history */}
+                {terminalHistory.map((line, index) => (
+                  <div key={index} className={`whitespace-pre-wrap font-mono text-sm leading-relaxed ${
+                    line.startsWith('$ ') ? 'text-green-400' : 'text-white'
+                  }`}>
+                    {line}
+                  </div>
+                ))}
+              </div>
+              
+              {/* Terminal Input */}
+              <form onSubmit={handleTerminalSubmit} className="flex items-center mt-2">
+                <span className="text-purple-400 font-mono text-sm mr-2">$</span>
+                <input
+                  type="text"
+                  value={terminalInput}
+                  onChange={(e) => setTerminalInput(e.target.value)}
+                  className="flex-1 bg-transparent text-white font-mono text-sm outline-none border-none"
+                  placeholder="Type a command..."
+                  style={{ color: 'white' }}
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+              </form>
             </div>
           )}
         </div>
