@@ -556,6 +556,38 @@ export default function Home() {
   
   return (
     <main className="relative min-h-screen overflow-hidden">
+      {/* Debug Panel Styles */}
+      <style>
+        {`
+          .debug-panel-scrollbar::-webkit-scrollbar {
+            width: 4px;
+          }
+          .debug-panel-scrollbar::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.3);
+          }
+          .debug-panel-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.4);
+            border-radius: 2px;
+          }
+          .debug-panel-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(59, 130, 246, 0.6);
+          }
+          
+          .debug-panel-collapsed {
+            min-height: 28px !important;
+            height: 28px !important;
+          }
+          
+          .debug-panel-header {
+            transition: all 0.2s ease;
+          }
+          
+          .debug-panel-header:hover {
+            background: rgba(15, 23, 42, 0.5) !important;
+          }
+        `}
+      </style>
+      
       {/* Header Section */}
       <div className="relative z-10 bg-gradient-to-b from-slate-950/95 to-transparent backdrop-blur-md py-12">
         <div className="flex items-center justify-center gap-4">
